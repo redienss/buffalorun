@@ -1,21 +1,25 @@
 # BuffaloRun License
 
-**Personal Use, Source-Available License**
+**Personal Use License**
 
 Copyright (c) 2011–2026 Tomasz Szneider, Weronika Bałaban, Bartłomiej Szneider.
 All rights reserved.
 
 ## 1. Grant of License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated assets and documentation (the "Software")
-**directly from the official source** — the author's GitHub account at
-<https://github.com/redienss/> — to:
+For as long as the released version of the Software is below **1.0.0**,
+permission is hereby granted, free of charge, to any person obtaining an
+official release build of this software and its associated assets (the
+"Software") **directly from the author's GitHub account** at
+<https://github.com/redienss/buffalorun/releases> to:
 
-- download, build, and run the Software;
+- download and run the Software;
 - use the Software for **personal, non-commercial purposes**, such as
-  playing the game, evaluation, education, and research;
-- modify the Software for their own personal use.
+  playing the game, evaluation, education, and research.
+
+The Software's source code is not published. This license grants no right to
+build, compile, modify, decompile, disassemble, or otherwise reverse-engineer
+the Software.
 
 Feedback, bug reports, and suggestions are welcome.
 
@@ -30,10 +34,6 @@ Except as expressly permitted above, you may **not**:
 - use the Software, in whole or in part, for any **commercial purpose**;
 - sublicense, sell, rent, lease, or lend the Software.
 
-Forking and viewing this repository within GitHub itself, as permitted by
-the [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service),
-is not considered redistribution under this license.
-
 ## 3. Commercial Use
 
 If you would like to use the Software or any of its components commercially,
@@ -42,7 +42,16 @@ please contact the author to arrange a separate license:
 - GitHub: <https://github.com/redienss/>
 - E-mail: <redienss@gmail.com>
 
-## 4. Third-Party Components
+## 4. Version 1.0.0 and Later
+
+This license covers releases below version 1.0.0 only, made available free
+of charge so the game can be played and tested while it is still being
+finished. Terms for version 1.0.0 and any later release — which may differ
+from this license — will be announced separately when that version ships,
+and do not change what you may do with a pre-1.0.0 version already obtained
+under this license.
+
+## 5. Third-Party Components
 
 The Software includes third-party components that remain under their own
 license terms, which this license does not override, including:
@@ -55,13 +64,13 @@ license terms, which this license does not override, including:
 - [MonoGame](https://monogame.net/) — referenced as a NuGet dependency,
   distributed under the Microsoft Public License (Ms-PL).
 
-## 5. Termination
+## 6. Termination
 
 This license terminates automatically if you violate any of its terms.
 Upon termination, you must stop using the Software and delete all copies
 in your possession.
 
-## 6. Disclaimer of Warranty
+## 7. Disclaimer of Warranty
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
