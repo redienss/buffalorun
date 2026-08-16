@@ -2,6 +2,250 @@
 
 All notable changes to BuffaloRun since the .NET 8 / MonoGame 3.8.4 port.
 
+## 0.5.6-dev – 2026-08-13 – 2026-08-16
+
+The release that gave the world a sky. Shadows now reach every model, not just the ground; the sun and moon cross it on a day-night cycle; and night and the villages both have music of their own.
+
+### Day & night
+- The sun and moon move across the sky by the world's own latitude — sun direction and lighting
+  are shader uniforms now, not a fixed constant, and `usgs_world.py` writes
+  `TerrainLatitude`/`TerrainLongitude` into `world.cfg` for it to read.
+- The sky changes colour with the time of day — blue at noon, red/orange at sunrise and sunset,
+  black at night — one gradient shared between the sky sphere, the fog the ground fades into, and
+  the screen's own clear colour.
+- Night is actually playable now: moonlight raised so the ground reads by it, and the moon sprite
+  itself brightened so it looks lit rather than a dim grey disc.
+
+### Shadows
+- Every model now casts and receives shadows, not just the ground — a new shared `SceneModel.fx`
+  replaces `BasicEffect` across the board, so a rock standing in a mesa's shadow is finally dark.
+  A windmill's blades cast as the blade fan they are, not the quad they're painted on.
+- Cascaded Shadow Maps: the view range cut into three maps sharing one 2048 atlas, sharp underfoot
+  and reaching 600 m, filtered with a jittered PCF grid so the filter's own regularity doesn't
+  show along an edge.
+- The sun's shadow direction is quantised and held on a 4-second clock rather than following the
+  day-night cycle live — what the eye catches is a shadow edge changing, not how far, and a live
+  direction was turning the very texel grid the snapping rounds onto.
+- The far cascades — which cover almost the whole screen — got a cheaper filter tap count of their
+  own: 2.8 ms and 13 FPS back on `groom_lake`'s western village.
+
+### Torches
+- A new placeable, throwable item: right mouse button lights or extinguishes the one in hand,
+  burning as a spotlight independent of which belt slot it's in.
+- Middle mouse button stands any toolbelt item — torches included — upright on the ground it's
+  aimed at.
+- Torches are scattered into containers and stocked by `world-add-loot`, the same as grass bales,
+  TNT and whiskey.
+
+### Buffs
+- The buff HUD redesigned: stackable and quieter, tiles stacked soonest-to-end nearest the belt.
+- A TNT fuse buff shows how long is left before a lit stick in hand goes off.
+- A whiskey buff wobbles the first-person view — a fading sine roll, pitch and yaw — tuned down
+  after playtesting so it stays short of seasickness.
+
+### Music
+- Village music: 20 pan-flute tracks take over from the soundtrack when the player is near a
+  goal.
+- Night music: the soundtrack and mixed sources play only the Night set after sunset; a player's
+  own custom music always plays regardless.
+
+### The herd
+- A buffalo gives up on a destination after three consecutive stalls with no ground covered, so a
+  bale thrown somewhere genuinely unreachable stops burning a route search every 6 seconds
+  forever — the herd grazes instead.
+
+### Fixed
+
+- The level behind the main menu stopped simulating and drawing once the menu covers it — an
+  18 FPS stall.
+- A level's terrain build is deferred until it's actually played or edited, so opening one
+  without `--start-game` no longer builds a second full-resolution mesh nothing uses
+  (menu-idle: 903.7 → 412.0 MB of LOH, 1,105.1 → 636.4 MB of working set).
+- A Release build no longer ships the maintainer's home directory path in plaintext —
+  `LevelsSourceDir`'s assembly metadata is Debug-only now.
+- `release.sh` clears stale publish output before each build, so a file left over from testing
+  can no longer ride silently into a release ZIP.
+
+### Changed
+
+- The repository is now split: this game's source stays private, with a public half
+  (`redienss/buffalorun`) holding the README, screenshots and releases.
+
+## 0.5.5-dev – 2026-08-06 – 2026-08-12
+
+The release that filled the streamed worlds in. Villages, wild herds, loot and scenery now dress a world tile by tile, and the view itself grows at runtime to match a fast machine's headroom.
+
+### Added
+
+**Adaptive view range**
+- The terrain load/unload radii, far plane and fog end all grow at runtime while FPS and system
+  RAM have headroom, so a fast machine sees further without every machine paying a wide ring's
+  cost up front.
+- An FPS breach shrinks the delta back at five times the speed it grew — a low frame rate is felt
+  at once, where growing slowly is invisible; a RAM breach only freezes it, since the game's own
+  resident set stops growing on its own.
+- Two FPS thresholds (65/75 by default) with a dead band between them, so the delta doesn't
+  oscillate right at a single line.
+- Gated on actually being in a run, so it no longer grows quietly behind the main menu.
+- `debug-adaptive-view-range` watches the live delta, FPS and RAM against their thresholds.
+
+**Populating a world**
+- `world-add-villages` sites fenced Native American villages on a world's flattest ground, each
+  with its own goal, ringed with a tight circle of stones sealed until breached with TNT.
+- `world-add-herds` sites wild buffalo herds on flattest dry ground, kept apart from every village
+  and from each other.
+- `world-add-loot` sets a world's container pool from the console and splits it tile by tile, so
+  loot fills correctly as a streamed world's tiles arrive.
+- `world-add-tornadoes` adds wandering, randomly-sized tornadoes.
+- `world-scatter-groups` dresses a world from named sets of models (stones, plants, cacti, small
+  containers, scenery) instead of a list that goes stale as models are added.
+- `world-clear` clears a named world's objects on every tile, without it having to be the one
+  open.
+- Idle wild-herd and tornado tiles now unload like everything else, instead of pinning ground
+  resident for the rest of the run.
+- The herd bar, the HUD and the completion threshold count the whole world's buffalo now, not
+  just the nearest herd.
+
+**Terrain streaming**
+- Each tile's step is chosen by measuring its own ground error against the load budget — took
+  `groom_lake`'s peak RSS from 7.38 GB to 2.53 GB.
+- A tile publishes its edge bands as a file of their own, so a neighbour reads one line instead
+  of decoding the whole tile (-20% a tile build).
+- Flow fields are windowed to a radius around their goal, so a bale thrown on a big world no
+  longer freezes the game, or — with the flow-field debug view on — crashes it out of memory.
+- A re-mipped tile rebuilds in place instead of blinking out, and a fresh world opened at a wide
+  view radius no longer reads itself in whole.
+- Ring-plus-timer streaming replaced with distance-band load/unload; concurrent tile builds are
+  capped so an outrun streaming ring can't queue more work than there are cores.
+- A cache of each tile's built mesh was tried, measured not to pay for itself on
+  `barringer_crater`, and reverted.
+
+**Recording & debug tools**
+- `typewriter` types a message letter by letter with a keypress sound and a blinking caret.
+- `message` shows a standard fading on-screen message from a script.
+- `MouseSmoothing`, an off-by-default first-person look smoothing option for steadier recordings.
+- Debug panel font zoom (`[` / `]`) and minimap zoom (numpad `+`/`-`).
+- `debug-ram`: system memory used against the machine's total, and how much of that this process
+  holds.
+
+**Also**
+- `CameraFar` is now derived from the unload radius plus a tile's own diagonal, rather than the
+  load radius, so a mountain no longer clips through the far plane as the camera turns to look
+  along it.
+- Fog now reaches the models as well as the ground, so a distant rock fades into the haze instead
+  of reading as a black speck painted on it.
+- A bale sensed by any one buffalo now draws the whole herd, not just the animals already within
+  smelling range of it.
+
+### Fixed
+
+- Diagonal camera movement (W+A etc.) is no longer √2 faster than a single direction.
+- `release.sh`'s previous-tag picker took the second-newest tag instead of the newest, so every
+  release's "changes since" notes went back one release too far.
+- `usgs_world.py` was writing its heightmaps north-south flipped.
+
+Streamed worlds ship separately from the game — they are far larger than it is, and only the
+tiles near the player are ever held in memory; install one by unzipping it into `Content/Levels/`
+beside the game.
+
+## 0.5.4-dev – 2026-08-03 – 2026-08-06
+
+The release that let a level outgrow memory. A world is now a grid of heightmap tiles streamed in around the player, so ground that used to run out of memory just runs.
+
+### Added
+
+**Terrain streaming**
+- A level can be a grid of heightmap tiles, of which only those near the player are held in
+  memory — an 8×8 km world runs where the same ground held whole used to run out of it.
+- `TerrainHeightScale` lets a heightmap describe ground taller than the 255 m a single pixel
+  value holds — the Grand Canyon is 1500 m from its river to its rim.
+- `scripts/usgs_world.py` builds a streamed world from real elevation data around a latitude and
+  longitude, keeping its own virtualenv and re-running itself inside it.
+- Streamed worlds are never committed. They're gitignored and travel as release assets of their
+  own, or are rebuilt from the one command that made them; the hand-authored levels stay in git
+  as they were.
+- Levels copy to the build recursively, so a world's folder of tiles deploys along with the
+  numbered levels.
+
+**Also**
+- The built-in soundtrack replaced with six new, more cinematic tracks.
+- New cowboy-glove cursor sprites, at 48px and 64px.
+- `release.sh` can overwrite an existing release, for when something slipped into the ZIPs by
+  mistake.
+
+### Fixed
+
+- `usgs_world.py`'s water-level heuristic no longer floods the Grand Canyon window into a lake.
+- `CameraFar` overrides the level's own view distance live now, read every frame instead of once
+  as the level opens — `set CameraFar` used to go dead after load.
+- Custom MP3s with a short Xing header (written by a variable-bitrate encoder) now play, and a
+  track that decodes to nothing is skipped rather than restarting every frame.
+- The whiskey buff HUD panel is registered in the layer pipeline, so it actually draws.
+- `TntFuseSoundVolumeMax` cut by half — the fuse hiss was too loud.
+
+## 0.5.3-dev – 2026-07-27 – 2026-08-03
+
+The release that gave a run an ending, and TNT to make one happen faster. Before this a level just kept going until you stopped playing it; now the herd is tracked home or lost, and a stick of dynamite pulled from a barrel can clear a way the long route around wouldn't.
+
+### Added
+
+**TNT**
+- Fuse, throw and blast: hold to wind up, release to throw a lit stick; it tumbles end over end
+  in the air and settles flat where it lands instead of standing bolt upright. The fuse hisses
+  and smokes in hand and in flight.
+- A growing fireball kills rocks, scenery and buffalo in its area — and the player too, if
+  they're standing in it when it goes off. A full-screen flash scales with distance and stacks
+  across close blasts.
+- The A\* board rebuilds only the region a blast actually touched instead of the whole map
+  (~500 ms down to ~1 ms on level 001), deferred until the fireball has finished growing so the
+  rebuild's own hitch doesn't land on the same frame as the explosion.
+
+**Containers & the toolbelt**
+- Barrels, crates and wigwams hold a 5×5 grid of items — click to take one, shift-click or R to
+  take all.
+- The toolbelt starts empty. Everything comes from a container now, and a slot carries a quantity
+  instead of an infinite supply.
+- Whiskey: pick it up, store it, throw and tumble it like TNT, and drink it with the right mouse
+  button.
+- Levels scatter a configurable number of grass bales and TNT sticks across their containers.
+
+**The herd**
+- Routes are answered by a flow field once enough buffalo want the same place, one sweep serving
+  the whole crowd instead of a search per animal; a bale still in the air draws nobody, so one
+  throw costs one field.
+- A stuck or stalled buffalo is freed or re-routed. Wedged against terrain or between obstacles,
+  it's put down somewhere it can carry on from; moving but getting nowhere, its route is worked
+  out again from where it stands.
+- A\* escapes a walled destination as well as a walled start — a bale thrown into a cactus no
+  longer drains the whole board every frame.
+- Water is a wall to the herd, on the board and underfoot, with a climbable band along the shore
+  so an animal that slid down isn't walled in by the very rule that keeps it off canyon walls.
+- A waypoint the herd has been shoved past is dropped instead of walked back to.
+- A bale is eaten at the pace of ten mouths, however few are actually at it.
+- The player can walk through the herd.
+
+**Ending a run**
+- The herd bar, above the tool belt, shows what's become of the herd — lost, airborne, in water,
+  still out there, saved.
+- A level completes at a share of the herd, not all of it, and completing one now asks rather
+  than ending the run outright.
+- A run that can no longer be completed says so, offering to keep herding anyway.
+- A run's summary — where every buffalo ended up, how long the level took — once the player is
+  done.
+
+**Also**
+- The player has a slope limit of their own, sliding off ground too steep to stand on.
+- The herd's A\* board and its flow fields can be drawn in the ground's place, a quad or an arrow
+  per cell.
+- Level 001 is a maze among the mountains now, dressed with scenery its own terrain chose, with
+  choke points opened up and stone walls to clear with TNT.
+- New textures for the goal, the grass bale and the wigwam; fixed bottom faces on stone_1–3; a
+  new whiskey bottle model; UV fixes on the TNT and the cacti.
+- `release.sh`, the script that cuts a release with `gh`, including the ability to overwrite one
+  if something slipped into the ZIPs by mistake.
+- An Obsidian knowledge vault, with every source file's comments trimmed to how-only and the
+  what/why moved into it.
+
 ## 0.5.2-dev – 2026-07-23 – 2026-07-27
 
 The release that made the world solid. Nothing was walked through before this one, and nothing
