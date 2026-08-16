@@ -14,11 +14,89 @@ Under it: heightmap terrain at one metre a pixel, textured by height with a four
 - **Weronika Bałaban** — terrain generation (`BuffaloRun.Terrain`)
 - **Bartłomiej Szneider** — 3D models (Blender)
 
+## Screenshots
+
+The shots below are taken by `scripts/screenshots.sh`, which drives the game from the command line — opening each screen, loading a level, sculpting a hill or throwing a bale to make the scene, framing the camera and capturing the window — so the whole set can be retaken after a visual change and compared like for like. Nothing it does is saved: the hills it digs and the tornado it drags across the map live in that one launch.
+
+### Screens
+
+| | |
+|---|---|
+| ![The options screen: monitor, resolution, full screen, terrain noise and the music source, over the dimmed main menu](screenshots/options.jpg) | ![The help screen: mouse actions, the sculpt tools and every key binding, in three columns](screenshots/help.jpg) |
+| ![The drop-down console listing its commands over a level](screenshots/console.jpg) | ![The exit confirmation dialog, NO selected](screenshots/exit-dialog.jpg) |
+
+### The terrain
+
+One pixel of a level's heightmap is one square metre, and four ground materials are blended over it by height above the water line — sand at the water, then grass, gravel and bare canyon rock, each laid on from all three axes so a vertical wall is not a smear.
+
+| | |
+|---|---|
+| ![A kilometre of mesas with water running in the channels between them, the ground shading from rock through gravel and grass to sand at the water](screenshots/terrain.jpg) | ![A river through the canyon at close range: sand along the banks, grass above it, then gravel and rock](screenshots/water.jpg) |
+
+The mesh under it is simplified where the ground is nearly flat, and cut into chunks for culling. Here the same view is drawn as its triangulation and as the blocks the simplifier merged the ground into — 2.09 M triangles down to 108 k, a 94.8% reduction, counted on the panel beside them.
+
+| | |
+|---|---|
+| ![The same landscape as a wireframe: dense triangles over the ridges, coarse ones across the flats](screenshots/terrain-mesh.jpg) | ![The same landscape with every merged block in its own colour, a patchwork that is coarse on the flats and fine on the ridges](screenshots/terrain-blocks.jpg) |
+
+### Day, night and shadows
+
+The sun and moon cross the sky on a day-night cycle set by the world's own latitude, and every model now casts and receives shadows — not just the ground, so a rock standing in a mesa's own shade is finally dark rather than lit as if nothing stood over it.
+
+| | |
+|---|---|
+| ![A river bend between orange mesas at midday, the water reading blue-green under full sun](screenshots/day.jpg) | ![The same river bend after dark: the mesas gone to near-silhouette, the water lit blue by moonlight alone](screenshots/night.jpg) |
+
+![A windmill at a low morning sun, its own shadow and a cactus's cast long across the grass beside it](screenshots/shadows.jpg)
+
+### The level editor
+
+A level is a heightmap and a list of objects. The palette on the left places the objects; its first four tiles are the terrain tools — a sculpt brush that raises and lowers the ground, and flatten, smooth and ramp beside it.
+
+| | |
+|---|---|
+| ![The editor over the goal: the model palette on the left, and a village of tipis, a windmill, crates, barrels and fences around the target-shaped goal](screenshots/editor.jpg) | ![A hill raised out of the plain with the sculpt brush, its ring drawn on the ground, and a hollow dug beside it that has filled with water](screenshots/sculpt.jpg) |
+| ![Standing beside the dug hollow: it is below the water line, so it is a pond, with the river beyond it](screenshots/sculpt-water.jpg) | ![Inside the gold mine, looking back out of its doorway at the village](screenshots/mine.jpg) |
+
+### What is solid
+
+A model is met by its separate pieces rather than by one box around the whole of it — so a rock built as a pillar with a slab over it can be walked under, and the herd's pathfinding board walls off the pillar alone.
+
+| | |
+|---|---|
+| ![A giant mushroom-shaped rock with the green box around the whole model, mostly fresh air, and cyan boxes hugging the pillar and the slab separately](screenshots/collision-boxes.jpg) | ![The same rocks under the pathfinding board: green where a buffalo may walk, red squares only under the pillars](screenshots/astar-board.jpg) |
+| ![A forest of the same rocks seen from the ground, each slab standing well clear of head height](screenshots/under-the-rock.jpg) | ![The debug panel with the frame rate, the update and draw times, the player's real speed, the music and the terrain's own numbers](screenshots/debug-panel.jpg) |
+
+### The herd
+
+| | |
+|---|---|
+| ![Fifty buffalo grazing, spread across a pocket of the canyon](screenshots/herd.jpg) | ![Eye level among the buffalo, faces and horns filling the frame](screenshots/first-person.jpg) |
+| ![First person in the village, a grass bale in flight from the tool belt along the bottom of the screen](screenshots/toolbelt.jpg) | ![A tornado bearing down on the grazing herd, one buffalo already inside the funnel](screenshots/tornado.jpg) |
+
+### Torches and buffs
+
+A torch lights or extinguishes with the right mouse button and stands upright with the middle one, burning for ten minutes wherever it's planted. Whiskey, a burning TNT fuse and a lit torch are all timed effects, each shown as a pie-chart tile above the tool belt that wipes down as it runs out.
+
+| | |
+|---|---|
+| ![A lit torch planted beside a cactus and a windmill, its warm light the only thing pushing back the canyon's own night](screenshots/torches.jpg) | ![Two buff tiles stacked above the tool belt: whiskey's drink soonest to end nearest the belt, the torch's fuel above it](screenshots/buffs.jpg) |
+
+### The open world
+
+A world is built from real elevation data (`scripts/usgs_world.py`) and streams in tile by tile around the player rather than loading whole — so a 20×20 km map costs only what is actually nearby, and the view itself grows at runtime while the machine has FPS and RAM to spare. Procedurally sited villages, wild herds, tornadoes and loot dress it before it ships.
+
+| | |
+|---|---|
+| ![A fenced village on Valley of the Gods: two windmills either side of a ring of wigwams, crates and barrels scattered inside, the goal marker beyond it](screenshots/villages.jpg) | ![The level map zoomed out over the whole 20 km world: a small patch of loaded tiles round the player, the rest of the world darkened as not yet streamed in, load and unload rings drawn round the marker](screenshots/terrain-streaming.jpg) |
+
+![The debug panel reporting the adaptive view range holding 31 m into its 2048 m cap, with the live FPS and RAM readings read against the thresholds that grow, shrink or freeze it](screenshots/adaptive-view-range.jpg)
+
 ## Playing it
 
 Built for Linux and Windows on the [Releases page](https://github.com/redienss/buffalorun/releases) — download the ZIP for your system, unpack it and run `BuffaloRun` (`BuffaloRun.exe` on Windows). Nothing else is needed — the build is self-contained, so there is no runtime to install.
 
-Worlds ship as separate downloads beside the game, because one is 150–800 MB against the game's 110. Unzip a world into `Content/Levels/` next to the levels that came with it, and it turns up in the level list. `scripts/usgs_world.py` in this repository builds a world of your own from real USGS elevation data — give it a latitude, a longitude and a size, and it fetches the ground and cuts it into the tiles the game streams.
+Worlds ship as separate downloads beside the game, because one is 150–800 MB against the game's 110. Unzip a world into `Content/Levels/` next to the levels that came with it, and it turns up in the level list. `scripts/usgs_world.py` in this repository builds a world of your own from real USGS elevation data — give it a latitude, a longitude and a size, and it fetches the ground and cuts it into the tiles the game streams in around you as you explore, rather than loading whole. A world carries its own day-night cycle set by the latitude it was built from, and is dressed with fenced villages, wild herds, wandering tornadoes and loot before it ships.
 
 ## Source code
 
@@ -26,7 +104,7 @@ The engine, the game, the terrain library, the 3D models and the level authoring
 
 ## Controls
 
-Press `F1` in game for the help screen, which lists every binding and stays current with them. The essentials: `WASD` moves the camera and `C` switches between third and first person (`Space` jumps, `Shift` runs, `L-Ctrl` crouches — which lowers the whole body, not just the eye, so a crouched player passes under what an upright one walks into — and `CapsLock` latches running on so a jump at a run needs one key fewer); the right mouse button turns the camera in third person and jumps in first (where the mouse looks about on its own), and the wheel zooms it; while a level is being played in first person the wheel walks the tool belt along the bottom of the screen instead, whose ten slots are also taken with `1`–`9` and `0` — hold the left button to wind up a throw of whatever is in hand (the grass bale or a stick of dynamite) and let go to launch it, with `E` picking a thrown bale or stick back up when you are looking at one within reach, whatever is in hand; `M` toggles the level map, `P` pauses; `F7` shows the debug panel and `B` and `O` draw what is solid — the box around each model, the cyan box of each of its pieces, and the bounding spheres; `F9` and `F10` turn the music down and up and `F11` puts another track on. Drop your own `.mp3` files in the `CustomMusic` folder beside the executable (it makes itself on the first run) and the *Music* row in Options plays them instead of the soundtrack, or mixed in with it. `` ` `` (backtick) opens the console, `F12` takes a screenshot and `Z` dumps the depth map used for mouse picking, both written next to the executable (`Screenshot_20260721_104221_001.png`, `DepthMap_…`) and timestamped so one run never overwrites another's. `Esc` steps back one layer at a time — help, then the editor, then the exit confirmation, which during a run offers the main menu as well as the desktop.
+Press `F1` in game for the help screen, which lists every binding and stays current with them. The essentials: `WASD` moves the camera and `C` switches between third and first person (`Space` jumps, `Shift` runs, `L-Ctrl` crouches — which lowers the whole body, not just the eye, so a crouched player passes under what an upright one walks into — and `CapsLock` latches running on so a jump at a run needs one key fewer); the right mouse button turns the camera in third person and jumps in first (where the mouse looks about on its own), and the wheel zooms it; while a level is being played in first person the wheel walks the tool belt along the bottom of the screen instead, whose ten slots are also taken with `1`–`9` and `0` — hold the left button to wind up a throw of whatever is in hand (the grass bale, a stick of dynamite, a torch or a bottle of whiskey) and let go to launch it, with `E` picking a thrown bale or stick back up when you are looking at one within reach, whatever is in hand. Holding a torch, TNT or whiskey changes what the right mouse button does instead of jumping: it lights or extinguishes the torch, lights TNT's fuse, or drinks the whiskey (which wobbles the view and speeds up the walk and the throw for two minutes); the middle button stands whatever's in hand upright on the ground instead of throwing it, which is how a torch gets planted. Whiskey, a lit torch and a burning fuse each show as a countdown tile above the tool belt while they run. `M` toggles the level map, `P` pauses; `F7` shows the debug panel and `B` and `O` draw what is solid — the box around each model, the cyan box of each of its pieces, and the bounding spheres; `F9` and `F10` turn the music down and up and `F11` puts another track on. Drop your own `.mp3` files in the `CustomMusic` folder beside the executable (it makes itself on the first run) and the *Music* row in Options plays them instead of the soundtrack, or mixed in with it. `` ` `` (backtick) opens the console, `F12` takes a screenshot and `Z` dumps the depth map used for mouse picking, both written next to the executable (`Screenshot_20260721_104221_001.png`, `DepthMap_…`) and timestamped so one run never overwrites another's. `Esc` steps back one layer at a time — help, then the editor, then the exit confirmation, which during a run offers the main menu as well as the desktop.
 
 The level editor is reached from the main menu. Its palette places props by click, drag moves them, the arrow keys rotate and scale, and its first four tiles are the terrain tools — a sculpt brush (hold the left button to raise the ground, `Shift` to lower it, or `CapsLock` to latch the direction, with `Up`/`Down` sizing it), and flatten, smooth and ramp beside it. Levels are saved with `End` and reloaded with `Home`.
 
@@ -136,56 +214,6 @@ Commands worth knowing in a script — `BuffaloRun --console-script "help; exit"
 | `music [<n>\|next\|scan]` | what is playing, and what else there is |
 | `exit` | quit the game |
 
-## Screenshots
-
-The shots below are taken by `scripts/screenshots.sh`, which drives the game from the command line — opening each screen, loading a level, sculpting a hill or throwing a bale to make the scene, framing the camera and capturing the window — so the whole set can be retaken after a visual change and compared like for like. Nothing it does is saved: the hills it digs and the tornado it drags across the map live in that one launch.
-
-### Screens
-
-| | |
-|---|---|
-| ![The options screen: monitor, resolution, full screen, terrain noise and the music source, over the dimmed main menu](screenshots/options.jpg) | ![The help screen: mouse actions, the sculpt tools and every key binding, in three columns](screenshots/help.jpg) |
-| ![The drop-down console listing its commands over a level](screenshots/console.jpg) | ![The exit confirmation dialog, NO selected](screenshots/exit-dialog.jpg) |
-
-### The terrain
-
-One pixel of a level's heightmap is one square metre, and four ground materials are blended over it by height above the water line — sand at the water, then grass, gravel and bare canyon rock, each laid on from all three axes so a vertical wall is not a smear.
-
-| | |
-|---|---|
-| ![A kilometre of mesas with water running in the channels between them, the ground shading from rock through gravel and grass to sand at the water](screenshots/terrain.jpg) | ![A river through the canyon at close range: sand along the banks, grass above it, then gravel and rock](screenshots/water.jpg) |
-
-The mesh under it is simplified where the ground is nearly flat, and cut into chunks for culling. Here the same view is drawn as its triangulation and as the blocks the simplifier merged the ground into — 2.09 M triangles down to 108 k, a 94.8% reduction, counted on the panel beside them.
-
-| | |
-|---|---|
-| ![The same landscape as a wireframe: dense triangles over the ridges, coarse ones across the flats](screenshots/terrain-mesh.jpg) | ![The same landscape with every merged block in its own colour, a patchwork that is coarse on the flats and fine on the ridges](screenshots/terrain-blocks.jpg) |
-
-### The level editor
-
-A level is a heightmap and a list of objects. The palette on the left places the objects; its first four tiles are the terrain tools — a sculpt brush that raises and lowers the ground, and flatten, smooth and ramp beside it.
-
-| | |
-|---|---|
-| ![The editor over the goal: the model palette on the left, and a village of tipis, a windmill, crates, barrels and fences around the target-shaped goal](screenshots/editor.jpg) | ![A hill raised out of the plain with the sculpt brush, its ring drawn on the ground, and a hollow dug beside it that has filled with water](screenshots/sculpt.jpg) |
-| ![Standing beside the dug hollow: it is below the water line, so it is a pond, with the river beyond it](screenshots/sculpt-water.jpg) | ![Inside the gold mine, looking back out of its doorway at the village](screenshots/mine.jpg) |
-
-### What is solid
-
-A model is met by its separate pieces rather than by one box around the whole of it — so a rock built as a pillar with a slab over it can be walked under, and the herd's pathfinding board walls off the pillar alone.
-
-| | |
-|---|---|
-| ![A giant mushroom-shaped rock with the green box around the whole model, mostly fresh air, and cyan boxes hugging the pillar and the slab separately](screenshots/collision-boxes.jpg) | ![The same rocks under the pathfinding board: green where a buffalo may walk, red squares only under the pillars](screenshots/astar-board.jpg) |
-| ![A forest of the same rocks seen from the ground, each slab standing well clear of head height](screenshots/under-the-rock.jpg) | ![The debug panel with the frame rate, the update and draw times, the player's real speed, the music and the terrain's own numbers](screenshots/debug-panel.jpg) |
-
-### The herd
-
-| | |
-|---|---|
-| ![Fifty buffalo grazing, spread across a pocket of the canyon](screenshots/herd.jpg) | ![Eye level among the buffalo, faces and horns filling the frame](screenshots/first-person.jpg) |
-| ![First person in the village, a grass bale in flight from the tool belt along the bottom of the screen](screenshots/toolbelt.jpg) | ![A tornado bearing down on the grazing herd, one buffalo already inside the funnel](screenshots/tornado.jpg) |
-
 ## Concept art
 
 Ideas for future additions to the game.
@@ -235,17 +263,23 @@ Beyond the 1:1 restoration, the 2026 version adds — newest first, and [CHANGEL
 - **A level can carry its own settings** in a `.cfg` beside its heightmap: the water line and the splat bands describe the level, not the player.
 - **Terrain sculpting** in the editor — a falloff brush that raises and lowers, plus flatten, smooth and ramp, all scriptable from the console.
 
+**A world without edges**
+- **Worlds up to tens of kilometres across**, built from real USGS elevation data (`scripts/usgs_world.py`) and **streamed in tile by tile** around the player rather than loaded whole.
+- **The view itself grows at runtime**: the load/unload radii, far plane and fog end all widen together while FPS and system RAM have headroom, and pull back at once — fast — if either runs out.
+- **Procedurally sited villages** (each with its own goal), **wild herds**, **wandering tornadoes** and **loot**, dressed onto a world before it ships.
+- **A day-night cycle** set by the world's own latitude, sun and moon crossing the sky together, with **every model — not just the ground — casting and receiving shadows**.
+
 **Playing it**
-- **A tool belt** of ten slots, thrown with a wind-up and a power ring, holding a grass bale to lead the herd with and a stick of dynamite; `E` picks back up whatever you are looking at.
+- **A tool belt** of ten slots, thrown with a wind-up and a power ring: a grass bale to lead the herd with, a stick of dynamite, a **torch** (lit or extinguished on the right mouse button, planted upright with the middle one) and a **bottle of whiskey** (drunk the same way, wobbling the view and speeding up the walk and the throw for a couple of minutes); `E` picks back up whatever you are looking at. Whiskey, a lit torch and a burning fuse each show as a **countdown tile** above the belt while they run.
 - **An idle herd grazes** round the place it came to rest, and a buffalo **turns at the pace an animal turns** rather than snapping round with its velocity.
-- **Music**: seven tracks with a fresh one whenever the game changes what it is doing, volume and skip on `F9`/`F10`/`F11`, and a `CustomMusic` folder that plays the player's own MP3s (decoded and streamed, since DesktopGL's `Song` is Ogg-only).
+- **Music**: seven tracks with a fresh one whenever the game changes what it is doing — including a set for the villages and one for the night — volume and skip on `F9`/`F10`/`F11`, and a `CustomMusic` folder that plays the player's own MP3s (decoded and streamed, since DesktopGL's `Song` is Ogg-only).
 
 **Driving it from outside**
 - **Quake-style console** (`` ` ``) — tab-completion, history, and commands for levels, objects, cameras, the terrain, the herd, the tool belt, the music, screenshots and any setting by name.
 - **Command-line arguments and scripting** — open any screen directly, override the display mode for one run, run console scripts and capture the window unattended (see [Command line](#command-line)).
 - **A file the game watches** (`console.in`/`console.out`), so one running game can be driven and read for as long as it stays up.
 - **Scriptable play**: `player-walk` walks the player for real over the frames to come and `player-walk-sim` runs the same walk to its end on the spot, both reporting what they ran into; `player-jump`, `player-crouch` and `herd-goto` press the rest of it.
-- **Debug tooling** — a panel on `F7` (frame rate, update and draw times, real speed, music, terrain), `B` and `O` for what is solid, the pathfinding board, the terrain's mesh and blocks, and depth-map dumps of the picking buffer.
+- **Debug tooling** — a panel on `F7` (frame rate, update and draw times, real speed, music, terrain), `B` and `O` for what is solid, the pathfinding board, the terrain's mesh and blocks, the adaptive view range's live delta against its cap, and depth-map dumps of the picking buffer; the level map can overlay a streamed world's loaded and unloaded tiles with the streaming radii drawn around the player.
 
 **The screens**
 - **Options screen** on the main menu — monitor, resolution, full screen, terrain noise and the music source, persisted to the user's config directory.
