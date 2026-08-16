@@ -1,0 +1,11 @@
+# Screenshots the game writes next to wherever it is run. The README's shots are captured by
+# scripts/screenshots.sh in the source repository and land in screenshots/ already named, so a
+# file matching these here is always a stray rather than one of them.
+Screenshot*.png
+DepthMap*.png
+
+# Source elevation tiles cached by scripts/usgs_world.py, and the virtualenv it builds for itself
+.dem-cache/
+.venv/
+
+*.log
