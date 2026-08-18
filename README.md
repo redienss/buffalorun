@@ -100,7 +100,11 @@ A world is built from real elevation data (`scripts/usgs_world.py`) and streams 
 |---|---|
 | ![A fenced village at sunset under a burning orange sky, the moon already risen behind a standing rock: crates and barrels scattered inside the fence, a windmill and distant mountains beyond it](screenshots/villages.jpg) | ![The level map zoomed out over the whole 20 km world: a small patch of loaded tiles round the player, the rest of the world darkened as not yet streamed in, load and unload rings drawn round the marker](screenshots/terrain-streaming.jpg) |
 
-![The debug panel reporting the adaptive view range holding 31 m into its 2048 m cap, with the live FPS and RAM readings read against the thresholds that grow, shrink or freeze it](screenshots/adaptive-view-range.jpg)
+The load/unload radii, the far plane and the fog can all grow well past their configured defaults while the machine has frame rate and RAM to spare, one shared delta added to each so the gap between them stays exactly as configured. Two FPS thresholds hold it steady rather than fighting itself frame to frame — above the high one the delta grows, below the low one it shrinks (five times faster than it grew, since a low frame rate is felt at once), and between the two it just holds. A RAM or hard-cap breach freezes it in place instead. `debug-adaptive-view-range` reports the live delta against its cap, the FPS and RAM it's judged against, and which of growing, shrinking, holding or frozen those add up to — the same debug panel at the same spot, delta shrunk to its floor on the left and grown well out on the right:
+
+| | |
+|---|---|
+| ![The debug panel with the view range shrunk to its floor: delta 0 of a 20000 m cap, the far plane 4008 m out, 32 tiles resident and the frame rate a comfortable 89 FPS](screenshots/adaptive-view-range-short.jpg) | ![The same spot with the delta grown 3492 m into its cap: the far plane out to 7500 m, 117 tiles resident, and the frame rate holding at 38 FPS in the dead band between the grow and shrink thresholds](screenshots/adaptive-view-range-long.jpg) |
 
 ## Playing it
 
