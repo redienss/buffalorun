@@ -76,7 +76,7 @@ A model is met by its separate pieces rather than by one box around the whole of
 | | |
 |---|---|
 | ![Fifty buffalo grazing, spread across a pocket of the canyon](screenshots/herd.jpg) | ![Eye level among the buffalo, faces and horns filling the frame](screenshots/first-person.jpg) |
-| ![First person in the village, a grass bale in flight from the tool belt along the bottom of the screen](screenshots/toolbelt.jpg) | ![A tornado bearing down on the grazing herd, one buffalo already inside the funnel](screenshots/tornado.jpg) |
+| ![A grass bale thrown from the tool belt arcs over a canyon toward a herd grazing by three tipis, a cactus standing in the foreground](screenshots/toolbelt.jpg) | ![A tornado bearing down on the grazing herd, one buffalo already inside the funnel](screenshots/tornado.jpg) |
 
 ### Torches and buffs
 
