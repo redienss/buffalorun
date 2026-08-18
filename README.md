@@ -45,9 +45,13 @@ The sun and moon cross the sky on a day-night cycle set by the world's own latit
 
 | | |
 |---|---|
-| ![A river bend between orange mesas at midday, the water reading blue-green under full sun](screenshots/day.jpg) | ![The same river bend after dark: the mesas gone to near-silhouette, the water lit blue by moonlight alone](screenshots/night.jpg) |
+| ![A fenced village at midday: tipis, a windmill and crates under a plain blue sky, the sun a bright star overhead](screenshots/day.jpg) | ![The same village well after dark: the tipis gone to near-silhouette, lit from below by planted torches and lanterns, a full moon standing in for the sun](screenshots/night.jpg) |
 
-![A windmill at a low morning sun, its own shadow and a cactus's cast long across the grass beside it](screenshots/shadows.jpg)
+![A canyon of mesas at sunset, the sky burning orange and the sun just slipping behind the far rim](screenshots/sunset.jpg)
+
+The shadow range is cut into three cascades, each fitted to its own slice of the view and refreshed only when the sun has moved far enough to be worth it — here `debug-shadow-map` lays all three out beside the frame they shade, alongside what each one covers and costs.
+
+![A row of mushroom-shaped rocks casting long shadows across cracked, sun-baked ground, with the debug panel showing the three shadow cascades, their fitted boxes and their per-metre resolution beside the frame times](screenshots/shadows.jpg)
 
 ### The level editor
 
@@ -80,7 +84,13 @@ A torch lights or extinguishes with the right mouse button and stands upright wi
 
 | | |
 |---|---|
-| ![A lit torch planted beside a cactus and a windmill, its warm light the only thing pushing back the canyon's own night](screenshots/torches.jpg) | ![Two buff tiles stacked above the tool belt: whiskey's drink soonest to end nearest the belt, the torch's fuel above it](screenshots/buffs.jpg) |
+| ![A tipi flanked by two lit torches at night, their warm light the only thing pushing back the darkness, mesas and a windmill just visible beyond](screenshots/torches.jpg) | ![Two buff tiles stacked above the tool belt: whiskey's drink soonest to end nearest the belt, the torch's fuel above it](screenshots/buffs.jpg) |
+
+### Loot and containers
+
+A crate, barrel or wigwam is scenery until it's opened — press `E` on one within reach and its contents come up in a grid over the tool belt: click a slot to take one, shift-click for the whole stack, or `R` to empty it in one go. What a level scatters into them is grass bales, dynamite, whiskey and torches, so a village worth raiding is also a village worth resupplying from.
+
+![Looking into an open crate between two tipis and a windmill: a grass bale, a stick of dynamite and a bottle of whiskey sit in its grid, the tool belt showing what's already in hand below](screenshots/containers.jpg)
 
 ### The open world
 
@@ -88,7 +98,7 @@ A world is built from real elevation data (`scripts/usgs_world.py`) and streams 
 
 | | |
 |---|---|
-| ![A fenced village on Valley of the Gods: two windmills either side of a ring of wigwams, crates and barrels scattered inside, the goal marker beyond it](screenshots/villages.jpg) | ![The level map zoomed out over the whole 20 km world: a small patch of loaded tiles round the player, the rest of the world darkened as not yet streamed in, load and unload rings drawn round the marker](screenshots/terrain-streaming.jpg) |
+| ![A fenced village at sunset under a burning orange sky, the moon already risen behind a standing rock: crates and barrels scattered inside the fence, a windmill and distant mountains beyond it](screenshots/villages.jpg) | ![The level map zoomed out over the whole 20 km world: a small patch of loaded tiles round the player, the rest of the world darkened as not yet streamed in, load and unload rings drawn round the marker](screenshots/terrain-streaming.jpg) |
 
 ![The debug panel reporting the adaptive view range holding 31 m into its 2048 m cap, with the live FPS and RAM readings read against the thresholds that grow, shrink or freeze it](screenshots/adaptive-view-range.jpg)
 
