@@ -6,7 +6,7 @@ A 3D buffalo-herding game written in 2011 in C# on Microsoft XNA 4.0 — and bro
 
 Herd the buffalo across a desert canyon, past cacti, wigwams, windmills and tornadoes, into the goal. Lead them with grass bales thrown from your own hand, and keep them off the rocks and out of the funnels.
 
-Under it: heightmap terrain at one metre a pixel, textured by height with a four-material splat map and simplified where the ground is flat; a flocking AI for the herd with A\* routing that goes *under* the overhang of a rock rather than around it; solid-body collision for the player, the herd and anything thrown, met by a model's separate pieces rather than by one box around the lot; a skinned, animated buffalo; a seven-track soundtrack that also plays your own MP3s; and an in-game level editor with terrain sculpting — all of it drivable from a console, a command line, or a file the game watches.
+Under it: heightmap terrain at one metre a pixel, textured by height with a four-material splat map and simplified where the ground is flat; procedurally generated trees grown from a seed as the level loads; a flocking AI for the herd with A\* routing and flow fields that goes *under* the overhang of a rock rather than around it; solid-body collision for the player, the herd and anything thrown, met by a model's separate pieces rather than by one box around the lot; a skinned, animated buffalo; a soundtrack that also plays your own MP3s; and an in-game level editor with terrain sculpting — all of it drivable from a console, a command line, a route drawn on the map, or an offline renderer that records the whole thing frame by frame.
 
 ## Credits (2011)
 
@@ -16,7 +16,7 @@ Under it: heightmap terrain at one metre a pixel, textured by height with a four
 
 ## Screenshots
 
-The shots below are taken by `scripts/screenshots.sh`, which drives the game from the command line — opening each screen, loading a level, sculpting a hill or throwing a bale to make the scene, framing the camera and capturing the window — so the whole set can be retaken after a visual change and compared like for like. Nothing it does is saved: the hills it digs and the tornado it drags across the map live in that one launch.
+Almost all the shots below are taken by `scripts/screenshots.sh`, which drives the game from the command line — opening each screen, loading a level, sculpting a hill or throwing a bale to make the scene, framing the camera and capturing the window — so the whole set can be retaken after a visual change and compared like for like. Nothing it does is saved: the hills it digs and the tornado it drags across the map live in that one launch.
 
 ### Screens
 
@@ -38,6 +38,14 @@ The mesh under it is simplified where the ground is nearly flat, and cut into ch
 | | |
 |---|---|
 | ![The same landscape as a wireframe: dense triangles over the ridges, coarse ones across the flats](screenshots/terrain-mesh.jpg) | ![The same landscape with every merged block in its own colour, a patchwork that is coarse on the flats and fine on the ridges](screenshots/terrain-blocks.jpg) |
+
+### Trees
+
+A world grows its own trees as it loads — a handful of unique shapes built in memory from a seed, each a tapering, forking trunk with alpha-cut leaf cards hung on the outer branches. A tree is solid as a trunk and a canopy, the canopy floored at the first fork, so the herd walks under the crown and around the base rather than into an invisible cylinder; and it takes the sun and casts into the shadow map like every other model. Nothing is written to disk — ten trees is about 25 ms at load.
+
+![The game's loading screen: a lone tree in silhouette against a hazy low sun, more trees scattered across the grass toward distant mesas, long shadows reaching back toward the camera](screenshots/loading_screen.png)
+
+That is the game's loading-screen art, held over the first moments of a run — long enough for a streamed world's tiles to arrive around the camera — and then faded out, so the player never sees the ground appear underfoot or the sun hang under terrain that has yet to load.
 
 ### Day, night and shadows
 
@@ -110,7 +118,7 @@ The load/unload radii, the far plane and the fog can all grow well past their co
 
 Built for Linux and Windows on the [Releases page](https://github.com/redienss/buffalorun/releases) — download the ZIP for your system, unpack it and run `BuffaloRun` (`BuffaloRun.exe` on Windows). Nothing else is needed — the build is self-contained, so there is no runtime to install.
 
-Worlds ship as separate downloads beside the game, because one is 150–800 MB against the game's 110. Unzip a world into `Content/Levels/` next to the levels that came with it, and it turns up in the level list. `scripts/usgs_world.py` in this repository builds a world of your own from real USGS elevation data — give it a latitude, a longitude and a size, and it fetches the ground and cuts it into the tiles the game streams in around you as you explore, rather than loading whole. A world carries its own day-night cycle set by the latitude it was built from, and is dressed with fenced villages, wild herds, wandering tornadoes and loot before it ships.
+Worlds ship as separate downloads beside the game, since a large one is bigger than the game itself and most players will not want it. Unzip a world into `Content/Levels/` next to the levels that came with it, and it turns up in the level list. `scripts/usgs_world.py` in this repository builds a world of your own from real USGS elevation data — give it a latitude, a longitude and a size, and it fetches the ground and cuts it into the tiles the game streams in around you as you explore, rather than loading whole. A world carries its own day-night cycle set by the latitude it was built from, and is dressed with fenced villages, wild herds, wandering tornadoes and loot before it ships.
 
 ## Source code
 
@@ -133,7 +141,7 @@ The game normally opens on the main menu, but arguments can take it straight to 
 ```bash
 BuffaloRun --level-editor          # or --menu, --menu-options, --help-screen,
                                    #    --exit-dialog, --start-game, --console
-BuffaloRun --level 999             # load a level first (Content/Levels/999.png)
+BuffaloRun --level 001_river_canyon   # load a level first (Content/Levels/001_river_canyon.png)
 ```
 
 **Overriding the display mode**, for this run only — the settings file is left alone (screens are numbered as the Options screen numbers them):
@@ -149,21 +157,28 @@ BuffaloRun --display-screen auto --display-window
 BuffaloRun --level-editor --screenshot editor.png --exit-after 2
 ```
 
+**Recording a run:** `--render-offline`, together with a `--console-script` and a `--render-output`, records the script frame by frame at a fixed step, so a demo or a walkthrough comes out smooth however long each frame took to draw — the replacement for pointing a screen recorder at the window. A `%06d` token in the output name writes a PNG sequence; an `.mp4` / `.mkv` / `.mov` / `.webm` pipes frames straight into `ffmpeg` with nothing on disk in between. `--render-resolution` renders off-screen at any size up to real 4K, and `--render-begin <n>` skips the first `n` frames so the recording does not open on the settle delay:
+
+```bash
+BuffaloRun --render-offline --render-output demo.mp4 --render-resolution 3840x2160 \
+           --level 995_render_offline --start-game --console-script demo-script.txt
+```
+
 ### Running scripts
 
 `--console-script` runs the same commands the in-game console takes (`` ` ``), so a run can be set up from the shell instead of typed by hand. Give it commands inline, separated by `;`, or a file holding one per line:
 
 ```bash
-BuffaloRun --console-script "level-load 999"
-BuffaloRun --console-script "level-load 001; screenshot; level-load 999; screenshot; exit"
+BuffaloRun --console-script "level-load 001_river_canyon"
+BuffaloRun --console-script "level-load 001_river_canyon; screenshot; level-load 999_object_grid; screenshot; exit"
 BuffaloRun --console-script script-file.txt
 ```
 
 ```
 # script-file.txt — blank lines and # comments are skipped
-level-load 001
+level-load 001_river_canyon
 screenshot shot-001.png
-level-load 999
+level-load 999_object_grid
 screenshot shot-999.png
 exit
 ```
@@ -183,7 +198,7 @@ How it behaves:
 `--console-script` is fixed at start-up, so trying another camera angle means another launch. The console also watches a file next to the executable — **`console.in`** — and runs whatever is written to it, empties it, and appends the output to **`console.out`**. One game can therefore be driven and read for as long as it stays up:
 
 ```bash
-echo "level-load 999; camera-target 250,250,0; camera-radius 120" > console.in
+echo "level-load 999_object_grid; camera-target 250,250,0; camera-radius 120" > console.in
 sleep 1 && cat console.out          # what the commands said, errors included
 
 echo "screenshot /tmp/shot.png" > console.in     # look, adjust, look again
@@ -219,9 +234,11 @@ Commands worth knowing in a script — `BuffaloRun --console-script "help; exit"
 | `camera-angle <h>,<v>` / `camera-angle-h <deg>` / `camera-angle-v <deg>` | turn and pitch, on whichever camera is active |
 | `camera-info` | print the active camera's placement, to find values worth scripting |
 | `console-show` / `console-hide` | show or hide the console itself, so a script can capture a screen with or without it |
-| `player-walk [<from>] <to>` / `player-walk-sim` | walk the first-person player there through the same keys a played frame uses — for real over the frames to come, or run to its end on the spot. Reports `arrived` / `blocked` / `ran out of time` with the ground actually covered, so sliding past a rock shows as a walk longer than the straight line |
+| `player-walk [<from>] (<to>\|route)` / `player-walk-sim` | walk the first-person player to a point or along the planned route, through the same keys a played frame uses — for real over the frames to come, or run to its end on the spot. Reports `arrived` / `blocked` / `ran out of time` with the ground actually covered, so sliding past a rock shows as a walk longer than the straight line |
 | `player-jump` / `player-crouch [0\|1]` | press the jump key once; hold the crouch key down |
-| `herd-goto <x>,<y>` / `herd-stats` | send the whole herd somewhere past every bale on the level (`-` gives it back its nose), and report what it is doing |
+| `herd-goto (<x>,<y>\|route\|-)` / `herd-stats` | send the whole herd to a point, along the planned route, or past every bale on the level (`-` gives it back its nose), and report what it is doing |
+| `route-add <x>,<y>` / `route-rm <i>` / `route-clear` / `route-show` | build and inspect a route — a list of waypoints in world metres, also drawn and edited on the level map |
+| `camera-fly route` / `camera-dolly route` | fly a free camera along the route on a smoothed spline: `fly` above the ground, `dolly` riding the terrain like a dolly on a track, both easing through the corners |
 | `tool [<slot>] [<name>]` / `throw [<power>]` / `pick-up` | the player's tool belt: what is on it, what is in hand, and using it |
 | `sculpt` / `sculpt-flatten` / `sculpt-smooth` / `sculpt-ramp` | the editor's terrain tools, from a script |
 | `terrain-debug [<mode>]` / `terrain-simplify [<m>]` | draw the terrain as wireframe, chunks, merged blocks, slope or the pathfinding board; merge the mesh to within so many metres of the heightmap |
@@ -272,6 +289,7 @@ Beyond the 1:1 restoration, the 2026 version adds — newest first, and [CHANGEL
 - The herd's **A\* board is marked from the same pieces**, and only where one comes down within a buffalo's headroom.
 
 **The world itself**
+- **Procedurally generated trees**, a handful of unique shapes grown in memory from the world's own seed as each level loads — a forking trunk with alpha-cut leaves, solid as a trunk and a canopy so the herd walks under the crown, casting and receiving shadows like every other model. Nothing is written to disk.
 - **Terrain at one metre a pixel**, sized by the level's own heightmap (24-bit fixed point, so gentle slopes are not a staircase), with the mesh **simplified** where the ground is flat and cut into chunks for culling — a kilometre of canyon draws about 5% of the triangles its grid holds.
 - **Splat-mapped ground**: four materials blended by height above the water line, projected from all three axes, with the band edges frayed by noise — and a **translucent water surface** with its own shader at the water line.
 - **A level can carry its own settings** in a `.cfg` beside its heightmap: the water line and the splat bands describe the level, not the player.
@@ -286,16 +304,20 @@ Beyond the 1:1 restoration, the 2026 version adds — newest first, and [CHANGEL
 **Playing it**
 - **A tool belt** of ten slots, thrown with a wind-up and a power ring: a grass bale to lead the herd with, a stick of dynamite, a **torch** (lit or extinguished on the right mouse button, planted upright with the middle one) and a **bottle of whiskey** (drunk the same way, wobbling the view and speeding up the walk and the throw for a couple of minutes); `E` picks back up whatever you are looking at. Whiskey, a lit torch and a burning fuse each show as a **countdown tile** above the belt while they run.
 - **An idle herd grazes** round the place it came to rest, and a buffalo **turns at the pace an animal turns** rather than snapping round with its velocity.
-- **Music**: seven tracks with a fresh one whenever the game changes what it is doing — including a set for the villages and one for the night — volume and skip on `F9`/`F10`/`F11`, and a `CustomMusic` folder that plays the player's own MP3s (decoded and streamed, since DesktopGL's `Song` is Ogg-only).
+- **Music**: a soundtrack that draws a fresh track whenever the game changes what it is doing — the core set, plus one for the villages and one for the night — volume and skip on `F9`/`F10`/`F11`, and a `CustomMusic` folder that plays the player's own MP3s (decoded and streamed, since DesktopGL's `Song` is Ogg-only).
 
 **Driving it from outside**
-- **Quake-style console** (`` ` ``) — tab-completion, history, and commands for levels, objects, cameras, the terrain, the herd, the tool belt, the music, screenshots and any setting by name.
+- **An offline renderer** (`--render-offline`): records a console script frame by frame at a fixed step — straight to a PNG sequence or an MP4, off-screen at up to 4K — so a demo comes out smooth however long each frame took to draw, with no screen capture.
+- **Route planning**: draw a route on the level map or build it from the console (`route-add`), then send the player, the whole herd or a free cinematic camera along it — `player-walk route`, `herd-goto route`, `camera-fly route` (a smoothed spline above the ground) and `camera-dolly route` (the same path riding the terrain), easing through the corners.
+- **Quake-style console** (`` ` ``) — tab-completion, history, and commands for levels, objects, cameras, the terrain, the herd, the tool belt, the music, screenshots and any setting by name. A `set` is session-only unless a `cfg-save` follows it, so a value typed for testing does not leak into the settings file.
 - **Command-line arguments and scripting** — open any screen directly, override the display mode for one run, run console scripts and capture the window unattended (see [Command line](#command-line)).
 - **A file the game watches** (`console.in`/`console.out`), so one running game can be driven and read for as long as it stays up.
 - **Scriptable play**: `player-walk` walks the player for real over the frames to come and `player-walk-sim` runs the same walk to its end on the spot, both reporting what they ran into; `player-jump`, `player-crouch` and `herd-goto` press the rest of it.
 - **Debug tooling** — a panel on `F7` (frame rate, update and draw times, real speed, music, terrain), `B` and `O` for what is solid, the pathfinding board, the terrain's mesh and blocks, the adaptive view range's live delta against its cap, and depth-map dumps of the picking buffer; the level map can overlay a streamed world's loaded and unloaded tiles with the streaming radii drawn around the player.
 
 **The screens**
+- **CONTINUE / NEW GAME** on the main menu, remembering the furthest level you have completed.
+- The built-in levels were renamed to descriptive names — `001_river_canyon`, `998_level_one_pathfinding_tests`, and so on.
 - **Options screen** on the main menu — monitor, resolution, full screen, terrain noise and the music source, persisted to the user's config directory.
 - **Help screen as a modal** on `F1`, generated from the bindings themselves; an **exit confirmation** that `Esc` steps back into.
 - **RTS-style edge scrolling** with the cursor confined to the window in full screen, and camera fixes — clamped to the map, kept above the terrain, a near plane per camera held inside the body's radius.
