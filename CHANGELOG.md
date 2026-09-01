@@ -2,6 +2,161 @@
 
 All notable changes to BuffaloRun since the .NET 8 / MonoGame 3.8.4 port.
 
+## 0.5.7-dev – 2026-08-16 – 2026-09-01
+
+The release that learned to film itself. Worlds grow trees; a route drawn on the map flies a
+camera or drives the herd along it; and a new offline renderer records the whole thing
+frame-by-frame, up to 4K, with no screen capture. Under the hood, the object and collision
+pipeline was split into static and dynamic halves, and the shadow cascades learned to cull
+what they can't shadow.
+
+### Trees
+
+- Worlds grow procedurally generated trees — `TreeGeometry` builds a handful of unique trees in
+  memory from a seed (`TreeUniqueModelCount`, `TreeSeed` in `world.cfg`), a tapering, forking
+  trunk with alpha-cut leaf cards hung on the outer branches. Nothing is written to disk; ten
+  trees is ~25 ms at load.
+- A leaf card wears one round clump of foliage on a transparent card, turned and mirrored one of
+  eight ways, so a crown reads as leaves rather than a heap of squares against a bright sky.
+- A tree is solid as a trunk and a canopy — two declared boxes, the canopy floored at the first
+  fork — so the herd walks under the crown and around the trunk rather than into an invisible
+  cylinder.
+- Trees draw through `SceneModel.fx`, so they take the sun and cast into the shadow map like every
+  other model.
+
+### The offline renderer
+
+- `--render-offline` records a `--console-script` frame-by-frame at a fixed timestep, so a demo
+  comes out smooth however long each frame took to draw — the replacement for pointing OBS at the
+  window. `wait` in the script counts down in the same step, so the script's timeline is the
+  render timeline.
+- `--render-output` dispatches on the extension: a `%06d` token writes a PNG sequence, an `.mp4` /
+  `.mkv` / `.mov` / `.webm` pipes frames straight into ffmpeg with no PNGs on disk.
+- `--render-resolution` renders off-screen at any size up to 2048² on Reach, and raises the device
+  to HiDef above that so real 3840×2160 fits.
+- `--render-begin <n>` steps n frames before capturing the first, so the settle delay and the
+  script's setup aren't the opening frames of a recording.
+- `--render-hud-scale <f>` composites the HUD into a larger off-screen target and scales it back
+  down, so a low-resolution preview of a shot framed for 1080p keeps its captions and panels
+  on-frame.
+- Cinematic defaults built in: mouselook off, music silenced, HUD hidden, first-person pinned
+  (`--render-keep-hud` keeps the HUD), the loading screen off, a per-second progress line and a
+  shutdown summary. A `/rendering` skill documents the flags and the ffmpeg encode / audio-mux /
+  frame-extract recipes.
+
+### Route planning
+
+- Plan a route once and send anything along it. Build it from the console (`route-add`,
+  `route-rm`, `route-clear`, `route-show`) or by clicking the minimap in precision-crosshair mode
+  — left-click drops a waypoint, right-click lifts the nearest — and it draws as a green line with
+  a dot per waypoint.
+- `player-walk route` teleports the player onto waypoint 0 and walks the rest; `herd-goto route`
+  drives the whole herd through the waypoints leg by leg, grazing at the last.
+- `camera-fly route` flies a free camera along a smoothed centripetal Catmull-Rom spline above the
+  ground; `camera-dolly route` rides the same spline along the terrain like a dolly on a laid
+  track. Both ease through a corner instead of snapping (`CameraTurnSpeedH` / `CameraTurnSpeedV`).
+- `camera-motion-tracking` can hold the sun or moon in frame through a fly or dolly as the
+  day-night cycle sweeps it across the sky.
+- `route-script` prints the route as a `route-clear` + `route-add` block ready to paste into a
+  `--console-script`.
+- The ten first-person locomotion settings were renamed `Camera*` → `Player*`, separating the
+  player from the camera ahead of the free-camera work.
+
+### Shadows
+
+- Shadow casters are culled per cascade — on the light-space XY plane against that cascade's own
+  view slice, and along the light axis as well — so a cascade only draws the casters that can
+  actually cast into it. On `996_csm_stress` that is +25% FPS on the low-power test machine for
+  zero pixels changed.
+- `ShadowCasterExtrusion` raised to 1000 m, so a low sun's near plane stops slicing the ground
+  itself out of the far cascade's map.
+- Shadow acne at a low sun is biased away per cascade, the slack and the normal step both scaling
+  with that cascade's own texel size and the sun's angle.
+- A tile's mesh is built in world space now, so the string of bright pixels that used to crawl
+  down every tile seam is gone.
+- The moon holds a constant brightness through dawn and dusk rather than dimming to a grey disc.
+- CSM slice bounding spheres tightened at a wide field of view.
+- `GraphicsProfileHiDef` / `--graphics-profile-hidef` raises a played session to HiDef so the
+  shadow atlas can pass 2048 — measured not worth it on the low-power machine, so it stays opt-in.
+
+### Performance
+
+- Objects split into static and dynamic, with the physics pass and the collision refiling walking
+  only the dynamic ones — level 001's per-frame object update dropped from ~7.7 ms to ~0.5 ms,
+  whatever is in view.
+- The collision spatial grid split the same way — a static grid filed once at load, a dynamic
+  grid for the herd and thrown objects.
+- The frustum cull uses the grid too now, sweeping only the cells the view footprint covers
+  instead of testing every object in the level; the grid's cells align exactly with the terrain
+  chunks.
+- Objects that render smaller than `ObjectMinScreenSize` are culled, so a distant speck stops
+  costing a full draw call.
+- GPU instancing for repeated static scenery.
+
+### Recording & debug tools
+
+- A console `set` is session-only now unless a `cfg-save` follows it, so a value typed for testing
+  no longer leaks into `buffalorun.cfg`.
+- The F7 debug panel fits its font to the map panel automatically, capped so a panel of two or
+  three short lines isn't blown up to fill the map.
+- `screenshot-series` saves a numbered screenshot every few seconds for long unattended scripts;
+  `screenshot` no longer draws the world a second time; a `dumptxt` option writes the F7 panel
+  text beside each PNG.
+- `typewriter` captions take a compass position; the message layer split into `ShowMessages` and
+  `ShowCaptions`; a `ShowBuffs` toggle hides the buff stack for a recording.
+- A precision crosshair on `.` that releases mouselook and edge-scrolling; `cursor-move` /
+  `crosshair` point a script at a debug panel; the world coordinate under the crosshair reads out
+  on the F7 panel.
+- Single-cascade shadow-map preview via `debug-csm-cascade` / NumPad 0–4; the F7 shadow panel's
+  per-cascade lines as an ASCII table in caster-culling order; `debug-terrain-mips` as a live
+  panel; `debug-spatial-grid-culling` and `terrain-debug collision-grid` minimap views; `fps-log`
+  with a `framecount` tally and a closing score.
+
+### Main menu & levels
+
+- CONTINUE / NEW GAME on the main menu, remembering the furthest completed level. `menu-select` /
+  `menu-click` console commands drive whichever option screen is open, the exit dialog included.
+- The numbered levels were renamed into the descriptive world-folder format (`001_river_canyon`,
+  `998_level_one_pathfinding_tests`, …).
+- Level 901, a lite copy of 001 with 10 buffalo and 75% less scenery, for fast test loads.
+- Container loot added to every built-in level that was missing it — several were uncompletable
+  without godmode.
+- Tornado traverse radius capped on the built-in levels, so a tornado no longer covers the whole
+  map and sucks in buffalo at the start.
+- The herd's shore-slope climb limited to within `HerdClimbsFromWaterRadius` of actual water, so a
+  canyon wall merely sitting at shore height can't be climbed like a ladder.
+
+### Audio
+
+- Container open / move sounds, a shared `SfxVolume` for every non-music sound effect, and the
+  effect WAVs peak-normalised.
+- An expanding white flash on any belt or container slot whose count goes up; tool-move sounds on
+  manual clicks and ground pick-up; `R` take-all paced one item at a time.
+
+### Fixed
+
+- `mine.fbx`'s baked-in texture path from before the repo split — a fresh checkout builds again.
+- The one-frame daytime-blue sky flash at level start (`ApplyObjectFog` was clobbering the
+  day-night fog tint with the flat `Settings.FogColor`).
+- Village music no longer plays behind the main menu — `NearVillage` is gated on actually being
+  in a run.
+- The shadow-volume overlay is capped at `ShadowVolumeMaxLength`, so a low sun no longer turns a
+  screenful of casters into a starburst of kilometre-long lines.
+
+### Changed
+
+- The one big console-command class was split into per-area classes (`set` / `get`, Camera,
+  Terrain, Level, Object, Player, World, Debug, help).
+- GitHub Actions runs the full test suite on every push and pull request; the .NET SDK is pinned
+  to 8.0.130. `AGENTS.md` added for coding agents.
+- `skysphere.fbx` cloud UVs improved.
+
+### Worlds
+
+- `monument_valley_8x8` ships as a downloadable world asset — the map used for the demo video,
+  real ground around 36.99, -110.09, an 8192 × 8192 m window at one cell per metre. Unzip it into
+  `Content/Levels/` beside the numbered levels.
+
 ## 0.5.6-dev – 2026-08-13 – 2026-08-16
 
 The release that gave the world a sky. Shadows now reach every model, not just the ground; the sun and moon cross it on a day-night cycle; and night and the villages both have music of their own.
