@@ -114,6 +114,17 @@ The load/unload radii, the far plane and the fog can all grow well past their co
 |---|---|
 | ![The debug panel with the view range shrunk to its floor: delta 0 of a 20000 m cap, the far plane 4008 m out, 32 tiles resident and the frame rate a comfortable 89 FPS](screenshots/adaptive-view-range-short.jpg) | ![The same spot with the delta grown 3492 m into its cap: the far plane out to 7500 m, 117 tiles resident, and the frame rate holding at 38 FPS in the dead band between the grow and shrink thresholds](screenshots/adaptive-view-range-long.jpg) |
 
+### A flight through the demo world
+
+These are frames from the demo film, and it was shot in a single pass with no screen recorder in the loop: a `camera-dolly` route drawn across the map of `monument_valley_8x8` — 8 × 8 km of real Utah ground (36.99, -110.09), streamed a tile at a time as the camera moves — handed to `--render-offline`, which stepped the day-night cycle from midday to sunset and wrote every frame at 4K. Rendering the whole run took about three hours on a laptop with the entire map resident.
+
+![A broad flat-topped red-rock butte across the whole frame at midday, its cliffs streaked with erosion, a green plain of scattered trees running up to its foot under a pale blue sky](screenshots/demo-monument-valley.jpg)
+
+| | |
+|---|---|
+| ![Looking up past the trunk and canopy of a large foreground tree, the noon sun a bright star through the leaves, a spire and a plain of smaller trees stretching away below](screenshots/demo-tree-midday.jpg) | ![Directly under a tree's forking trunk, the bark texture and the undersides of the alpha-cut leaf clumps filling the top of the frame, the grassy plain and a line of trees along the horizon beyond](screenshots/demo-canopy.jpg) |
+| ![A lone tree standing on a low butte in flat hazy dusk light, its shadow thrown straight toward the camera across pale gravel, a wall of cloud behind](screenshots/demo-dusk.jpg) | ![A tree in half-silhouette against a burning orange sunset sky, a saguaro and a distant volcanic spire on the darkened horizon, the last light catching the dry grass in the foreground](screenshots/demo-sunset.jpg) |
+
 ## Playing it
 
 Built for Linux and Windows on the [Releases page](https://github.com/redienss/buffalorun/releases) — download the ZIP for your system, unpack it and run `BuffaloRun` (`BuffaloRun.exe` on Windows). Nothing else is needed — the build is self-contained, so there is no runtime to install.
