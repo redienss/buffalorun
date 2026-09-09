@@ -84,6 +84,19 @@ TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.
 HEIGHTMAP_MAX = 255.0          # GrayBitmap.MaxHeight
 OVERVIEW_MAX = 2048            # Settings.WorldOverviewMax
 FINEST_SOURCE_M = 4.0          # stop zooming in once the source is this fine; below it is invented
+ELEV_MIN_PLAUSIBLE = -500.0    # Dead Sea shore with margin; below this a terrarium pixel is a void
+ELEV_MAX_PLAUSIBLE = 9000.0    # above Everest; above this a terrarium pixel is a void
+
+PROGRESS = False              # --progress: print machine-readable "PROGRESS <percent>" lines
+
+
+def emit_progress(fraction):
+    """With --progress, print a lone 'PROGRESS <percent>' line for the in-game World Creator's bar
+    to parse (T100). Silent otherwise, so a hand run's output is unchanged. The fractions below add
+    up to a rough but monotonic 0 -> 1: most of a run is the tile fetch, so it gets most of the bar.
+    """
+    if PROGRESS:
+        print(f"PROGRESS {max(0, min(100, int(fraction * 100)))}", flush=True)
 
 
 # ---- Web Mercator ----------------------------------------------------------------------------
@@ -155,6 +168,7 @@ def read_window(lat, lon, side_m, zoom, offset_e, offset_n, cache):
     os.makedirs(cache, exist_ok=True)
     mosaic = np.zeros(((ty1 - ty0 + 1) * 256, (tx1 - tx0 + 1) * 256), dtype=np.float64)
     done = 0
+    emit_progress(0.05)
     # Three at a time: the service resets connections under heavier parallelism.
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
         for tx, ty, rgb in pool.map(lambda t: fetch_tile(zoom, t[0], t[1], cache), wanted):
@@ -162,6 +176,7 @@ def read_window(lat, lon, side_m, zoom, offset_e, offset_n, cache):
             mosaic[(ty - ty0) * 256:(ty - ty0 + 1) * 256,
                    (tx - tx0) * 256:(tx - tx0 + 1) * 256] = metres
             done += 1
+            emit_progress(0.05 + 0.60 * done / len(wanted))
             if done % 25 == 0 or done == len(wanted):
                 print(f"  {done}/{len(wanted)} tiles", flush=True)
 
@@ -172,6 +187,147 @@ def read_window(lat, lon, side_m, zoom, offset_e, offset_n, cache):
     # Where the requested point ended up, in world metres from the window's north-west corner.
     px, py = lonlat_to_pixel(lon, lat, zoom)
     return window, ((px - x0) * mpp, (py - y0) * mpp)
+
+
+def grow_into_nan(filled, passes, fallback):
+    """Fill the NaN cells of an array by iterated four-neighbour averaging, in place.
+
+    Each pass sets a still-empty cell to the mean of whichever of its four neighbours already hold
+    a value, so valid ground grows into a gap a ring at a time - a thin seam closes in a pass or
+    two, and a lone one-cell hole in one. The slices never wrap, so a bad edge column fills inward
+    rather than from the far side of the window. Anything still open after `passes` - the middle of
+    a large hole, with no real data to reach for - is set to `fallback`.
+    """
+    for _ in range(passes):
+        holes = np.isnan(filled)
+        if not holes.any():
+            break
+        total = np.zeros_like(filled)
+        count = np.zeros_like(filled)
+        have = (~holes).astype(np.float64)
+        val = np.where(holes, 0.0, filled)
+        total[1:, :] += val[:-1, :]
+        count[1:, :] += have[:-1, :]
+        total[:-1, :] += val[1:, :]
+        count[:-1, :] += have[1:, :]
+        total[:, 1:] += val[:, :-1]
+        count[:, 1:] += have[:, :-1]
+        total[:, :-1] += val[:, 1:]
+        count[:, :-1] += have[:, 1:]
+        fillable = holes & (count > 0)
+        filled[fillable] = total[fillable] / count[fillable]
+    filled[np.isnan(filled)] = fallback
+    return filled
+
+
+def repair_voids(window):
+    """Fill gaps in the source elevation before anything measures the window.
+
+    Terrarium tiles carry voids - a seam between two national DEMs, a missing or error tile, a
+    black or white edge column - and a void pixel decodes to a wild elevation: -32768 m for RGB
+    (0, 0, 0), ~+32767 m for (255, 255, 255). Left in, one poisons the whole world: window.min() /
+    max() take it, so relief and the derived TerrainHeightScale balloon to tens of thousands of
+    metres, the real landscape is crushed into a handful of the 0..255 heightmap levels (a near
+    flat minimap), and the void itself pins to 0 or 255 - a full-height wall with a matching slot
+    once the bicubic resize smears the hairline gap into a band. The splat bands and water line,
+    also derived from relief, come out meaningless too.
+
+    Every pixel outside a plausible Earth-elevation band is flagged and filled from the nearest
+    valid ground by iterated four-neighbour averaging (no scipy on the target machines); whatever
+    is still open after the pass cap - the middle of a large hole, which has no real data to reach
+    for anyway - is set to the median real elevation. Returns (repaired_window, pixels_repaired).
+    """
+    bad = ~np.isfinite(window) | (window < ELEV_MIN_PLAUSIBLE) | (window > ELEV_MAX_PLAUSIBLE)
+    repaired = int(bad.sum())
+    if repaired == 0:
+        return window, 0
+    if repaired > window.size // 2:
+        sys.exit(f"{repaired} of {window.size} source pixels are outside a plausible elevation "
+                 f"range - the download looks broken, not gappy; retry, or pass an explicit --zoom")
+
+    good_median = float(np.median(window[~bad]))
+    filled = grow_into_nan(np.where(bad, np.nan, window).astype(np.float64), 96, good_median)
+    return filled, repaired
+
+
+def _wall_distance(pad, window, reach, axis, sign, threshold):
+    """For each cell, the fewest cells (1..reach) you step in one direction before the ground has
+    climbed `threshold` above the cell - or reach + 1 if it never does within reach. `axis` 0 is
+    north/south, 1 is east/west; `sign` -1 looks toward row/col 0, +1 the other way."""
+    h, w = window.shape
+    out = np.full((h, w), reach + 1, dtype=np.int16)
+    for d in range(1, reach + 1):
+        off = reach + sign * d
+        if axis == 0:
+            neighbour = pad[off:off + h, reach:reach + w]
+        else:
+            neighbour = pad[reach:reach + h, off:off + w]
+        found = (out > reach) & (neighbour - window >= threshold)
+        out[found] = d
+    return out
+
+
+def repair_pits(window, drop_m=100.0, despike_m=0.0, max_width=6, reach=8, max_passes=2):
+    """Fill the seam artefacts T104's void mask lets through - cells holding a *plausible* elevation
+    but sitting hundreds of metres below (or, with --despike, above) the real ground around them,
+    left on the boundary between two national DEMs of different resolution and vintage.
+
+    T105 found these as *isolated* one-cell pits and cleared them with a 3x3 median plus a "six of
+    eight neighbours agree" test. T109 is the same error drawn out into a *contiguous trench* a
+    cell or two wide running along the seam: a cell mid-trench has neither six good neighbours nor
+    an honest 3x3 median, so that test walked straight past it and the trench floor still set
+    window.min() and inflated relief, TerrainHeightScale, WaterLevel and the splat bands for the
+    whole world.
+
+    A cell is flagged when it sits in a *narrow ditch*: stepping outward until the ground has
+    climbed the full `drop_m` above it, the walls on two opposite sides - north and south, or east
+    and west - are together no more than `max_width` cells apart. That catches a pit (a wall one
+    cell off on every side) and a trench of any orientation up to `max_width` wide, while by
+    construction leaving alone the things that must survive: a canyon rim or an escarpment climbs
+    on one side only; a broad basin or valley has its far wall more than `max_width` cells away;
+    and asking for the whole of `drop_m` on *both* sides within that span keeps ordinary steep
+    ground - a mountainside, a V-drainage - well clear, since real ground that falls a hundred
+    metres into a gap only a few cells wide and climbs it straight back is not ground the terrarium
+    source resolves. A trench wider than `max_width`, or one pinned hard against the window edge, is
+    left to the low/high guard in main(), which keeps the height scale honest even if a shallow
+    notch survives in the geometry (it clips to zero there). Flagged cells are inpainted by the
+    four-neighbour averaging repair_voids uses. `--despike` turns on the mirror image for upward
+    spikes, off by default because a real spire or mesa lip can be a genuine one- or two-cell
+    feature. Returns (repaired_window, pits_filled, spikes_filled).
+    """
+    wall = drop_m
+    crest = despike_m
+    pits_filled = spikes_filled = 0
+
+    for _ in range(max_passes):
+        pad = np.pad(window, reach, mode="reflect")
+        dn = _wall_distance(pad, window, reach, 0, -1, wall)
+        ds = _wall_distance(pad, window, reach, 0, +1, wall)
+        dw = _wall_distance(pad, window, reach, 1, -1, wall)
+        de = _wall_distance(pad, window, reach, 1, +1, wall)
+        pit = (((dn <= reach) & (ds <= reach) & (dn + ds - 1 <= max_width))
+               | ((dw <= reach) & (de <= reach) & (dw + de - 1 <= max_width)))
+
+        if despike_m > 0:
+            npad, nwin = -pad, -window
+            un = _wall_distance(npad, nwin, reach, 0, -1, crest)
+            us = _wall_distance(npad, nwin, reach, 0, +1, crest)
+            uw = _wall_distance(npad, nwin, reach, 1, -1, crest)
+            ue = _wall_distance(npad, nwin, reach, 1, +1, crest)
+            spike = (((un <= reach) & (us <= reach) & (un + us - 1 <= max_width))
+                     | ((uw <= reach) & (ue <= reach) & (uw + ue - 1 <= max_width)))
+        else:
+            spike = np.zeros(window.shape, dtype=bool)
+
+        flagged = pit | spike
+        if not flagged.any():
+            break
+        pits_filled += int(pit.sum())
+        spikes_filled += int(spike.sum())
+        fallback = float(np.median(window[~flagged]))
+        window = grow_into_nan(np.where(flagged, np.nan, window).astype(np.float64), 12, fallback)
+
+    return window, pits_filled, spikes_filled
 
 
 # ---- Writing the world -----------------------------------------------------------------------
@@ -203,6 +359,7 @@ def write_world(out_dir, normalised, tiles_x, tiles_y, tile_size):
             Image.fromarray(encode(block), mode="RGB").save(
                 os.path.join(tile_dir, "heightmap_1.png"))
         print(f"  tile row {ty + 1}/{tiles_y}", flush=True)
+        emit_progress(0.70 + 0.25 * (ty + 1) / tiles_y)
 
     # The overview, by the rule WorldBuilder.WriteOverview uses: a power-of-two step so it divides
     # the tile size exactly, each cell the highest of its block so ground never reads low.
@@ -239,6 +396,16 @@ def main():
     parser.add_argument("tiles_y", type=int)
     parser.add_argument("--tile-size", type=int, default=1024, help="tile edge in metres (default 1024)")
     parser.add_argument("--zoom", type=int, default=0, help="source zoom; 0 picks it from the size")
+    parser.add_argument("--pit-depth", type=float, default=100.0,
+                        help="fill any cell sitting more than this many metres below its local "
+                             "level and ditched in on two opposite sides - a pit or a narrow "
+                             "trench left on a source-DEM seam that would otherwise drag down the "
+                             "whole world's height scale (default 100)")
+    parser.add_argument("--despike", type=float, default=0.0,
+                        help="also fill a cell this many metres ABOVE the ground on two opposite "
+                             "sides - an upward seam spike (0 = off, the default, since a real "
+                             "spire can be a genuine one-cell feature); set it for a location "
+                             "whose seam artefacts point up")
     parser.add_argument("--offset", default="0,0",
                         help="metres east,north from the point to the window's centre, so a "
                              "landmark can sit off to one side (default centred)")
@@ -246,7 +413,13 @@ def main():
                         help="where to write the world folder (default: the Levels folder of the "
                              "source tree or game install this script sits beside)")
     parser.add_argument("--cache", default=None, help="where to keep downloaded source tiles")
+    parser.add_argument("--progress", action="store_true",
+                        help="print machine-readable 'PROGRESS <percent>' lines on stdout, for the "
+                             "in-game World Creator's progress bar")
     args = parser.parse_args()
+
+    global PROGRESS
+    PROGRESS = args.progress
 
     if args.tiles_x < 1 or args.tiles_y < 1 or args.tile_size < 2:
         sys.exit("a world must be at least one tile, and a tile at least 2 m across")
@@ -265,10 +438,42 @@ def main():
         sys.exit(f"a world already exists at {out_dir} - remove it first")
 
     print(f"{args.name}: {side_m} x {side_m} m around {args.lat}, {args.lon}")
+    emit_progress(0.0)
     window, (point_x, point_y) = read_window(args.lat, args.lon, side_m, zoom,
                                              offset_e, offset_n, cache)
+    emit_progress(0.66)
 
-    low, high = float(window.min()), float(window.max())
+    raw_low, raw_high = float(window.min()), float(window.max())
+    window, repaired = repair_voids(window)
+    if repaired:
+        print(f"repaired {repaired} void pixel(s) "
+              f"({100.0 * repaired / window.size:.3f}% of the window); raw source range "
+              f"{raw_low:.0f} - {raw_high:.0f} m had values outside "
+              f"[{ELEV_MIN_PLAUSIBLE:.0f}, {ELEV_MAX_PLAUSIBLE:.0f}] m", flush=True)
+
+    window, pits, spikes = repair_pits(window, args.pit_depth, args.despike)
+    if pits or spikes:
+        note = f"filled {pits} seam pit / trench cell(s) > {args.pit_depth:.0f} m below the local level"
+        if args.despike > 0:
+            note += f" and {spikes} spike cell(s) > {args.despike:.0f} m above it"
+        print(note + " (source-DEM seam artefacts)", flush=True)
+    emit_progress(0.67)
+
+    # low/high set every derived cfg value, so a stubborn artefact repair_pits could not reach - a
+    # trench several cells thick pinned hard against the window's own edge - must not be allowed to
+    # define them. Take the range from a low/high percentile of the window's *interior* (a border
+    # ring wider than any trench repair_pits can see is dropped, so an edge-hugging artefact can't
+    # reach it), and only override the raw min/max when they sit an implausible distance past that
+    # - a clean window keeps its exact extremes (T109).
+    ring = 8
+    core = window[ring:-ring, ring:-ring] if min(window.shape) > 3 * ring else window
+    w_min, w_max = float(window.min()), float(window.max())
+    filt_min, filt_max = float(np.percentile(core, 0.1)), float(np.percentile(core, 99.9))
+    low = w_min if w_min >= filt_min - args.pit_depth else filt_min
+    high = w_max if w_max <= filt_max + args.pit_depth else filt_max
+    if low != w_min or high != w_max:
+        print(f"robust height range: raw {w_min:.0f} - {w_max:.0f} m carried a residual seam "
+              f"artefact; using {low:.0f} - {high:.0f} m from the window interior", flush=True)
     relief = max(high - low, 1e-3)
     height_scale = relief / HEIGHTMAP_MAX
 
@@ -280,6 +485,7 @@ def main():
     field = np.asarray(Image.fromarray(window.astype(np.float32), mode="F")
                        .resize((side_m, side_m), Image.BICUBIC), dtype=np.float32)
     normalised = np.clip((field - low) / height_scale, 0.0, HEIGHTMAP_MAX)
+    emit_progress(0.70)
 
     # read_window's row 0 is north (DEM rows run south with the source pixel grid), but a
     # heightmap's row 0 is world Y 0, which the minimap draws at its bottom - so written straight
@@ -291,6 +497,7 @@ def main():
 
     overview_px, overview_step = write_world(out_dir, normalised, args.tiles_x, args.tiles_y,
                                              args.tile_size)
+    emit_progress(0.97)
 
     # A load radius of one tile reaches to the player's own edge, which is not far enough to see
     # across deep ground - the far wall of a canyon is simply beyond the far plane. Relief buys a
@@ -344,6 +551,7 @@ SplatNoiseAmplitude = {round(relief * 0.008, 1)}
 SplatNoiseMeters = 30.0
 """)
 
+    emit_progress(1.0)
     print(f"overview {overview_px} px at {overview_step} m per cell")
     print(f"wrote {out_dir}")
     print(f"the point asked for is at world ({point_x:.0f}, {point_y:.0f}); "
