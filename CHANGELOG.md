@@ -2,6 +2,131 @@
 
 All notable changes to BuffaloRun since the .NET 8 / MonoGame 3.8.4 port.
 
+## 0.5.8-dev – 2026-09-01 – 2026-09-13
+
+The release that stopped asking players to open a terminal. **World Creator** turns a
+latitude/longitude — or one of a hundred named real-world places — into a playable world
+entirely from the main menu: pick a preset, tune villages, herds, trees, scenery, loot and
+tornadoes on one scrolling settings column, and watch a live minimap colour itself by splat
+band as the water line moves. Under the hood, the same push fixed the elevation data feeding
+it, the water it floods, the shadows crossing it, and the trees standing on it.
+
+### World Creator
+
+- A new main-menu screen generates a world from real elevation data with no console and no
+  script — `[Generate]` runs `usgs_world.py` on a background thread with a live progress bar,
+  detects a missing Python install up front, and hands the finished world straight to the
+  editor or into a run once it exists on disk (`[Edit]` / `[Start]`).
+- Three columns at 1920×1080 and up — **Presets** | the generation form | **World Settings**
+  — with `Tab` / `Shift`+`Tab` moving focus between them; a persisted `[/]` toggle switches to
+  full-page tabs at any resolution, which is also the automatic fallback below FHD.
+- The left column lists a hundred named places (`world_creator_presets.csv` — pick one and its
+  name, latitude and longitude fill the form) above every **Created world** already on disk,
+  split into **USGS 3DEP** and **handcrafted** sections so the two are told apart at a glance.
+  Picking a handcrafted level now clears any stale coordinates a previous USGS selection left
+  behind, closing a real risk of overwriting a hand-sculpted heightmap with a fresh download.
+- The right column drives real composition, one settings group per kind of thing a world can
+  hold — **Seed**, **Villages**, **Herds** (with a buffalo min/max range), **Trees** (count,
+  unique models, elevation band), **Scenery**, **Loot** (grass bales, whisky, TNT, torches),
+  **Tornadoes** (count plus wander radius/speed), **World** (day length), **Splat mapping**
+  (water level, grass/gravel top, blend, noise) and a **Stone circles** toggle. Every count is
+  uncapped — a warning line appears rather than a hard limit once a composition adds up to a
+  lot of objects.
+- `[Generate]` downloads the ground, runs every enabled group as a composition step, and writes
+  the settings to a `[worldcreator]` block in `world.cfg`; `[Apply]` re-runs composition only,
+  against the world already on disk, with no re-download — so a world is reproducible from
+  preset + tiles + seed alone.
+- A minimap preview colours the ground by splat band (water, grass, gravel, rock) straight from
+  the form's own live values, so raising the water line floods a crater or riverbed on the
+  preview at once, before a single tile is generated.
+- The whole form is scriptable — every field and button has a `world-creator-*` console
+  counterpart, for a reproducible `--console-script` demo or test.
+
+### Elevation data (`scripts/usgs_world.py`)
+
+- A source DEM's missing-data voids and seam artefacts no longer skew a generated world's whole
+  height scale. Voids used to decode as extreme high/low values that inflated the relief figure
+  by nearly 40× and crushed the real terrain into a sliver of the available height range; they
+  are now detected and neighbour-filled before the window is measured.
+- Narrower, still-deep pits along a seam (a single bad pixel, or a short contiguous run of them)
+  that don't look like a full void get the same repair, `--pit-depth`-tunable, with an opt-in
+  `--despike` for the upward-spike equivalent.
+
+### Water
+
+- The player's screen tints blue while the first-person eye is under `WaterLevel`, movement
+  slows to sell the resistance, and fog shortens and darkens into something closer to murk.
+- The water surface is lit against the same sun/moon/torch rig everything else uses (it used to
+  glow exactly as bright at midnight as at noon) and now receives shadows, so a canyon wall's
+  shade reaches the water instead of stopping dead at the shoreline.
+- A fresh world spawns the player on the flattest dry ground near a village or wigwam instead of
+  the map's literal centre, which on a crater-lake preset used to be the middle of the lake.
+- Shoreline z-fighting on large worlds is reduced (not eliminated) by a depth bias on the water
+  surface that scales with distance from the camera.
+
+### Trees
+
+- A tree's canopy is no longer a single invisible wall the width of the crown — only the trunk
+  and a slim mass of first-layer branches block the player, and standing on that branch mass
+  like solid ground is a settings toggle, on by default.
+- Walking through a canopy plays one of four looped foliage-rustle sounds at random, gated on
+  actually moving so it doesn't loop forever while the player stands still inside one.
+
+### Shadows
+
+- The low-sun shadow seam where two cascades meet, present since cascaded shadow maps first
+  shipped and only partly addressed since, is fixed: the filter's blur width was specified in
+  texels, and a texel covers a very different amount of ground per cascade, so the same setting
+  blurred each cascade by a different real-world width. The spread is now scaled per cascade
+  against the nearest one's texel size.
+- A hard-edged dark diagonal band that could appear on fence planks under their one-axis height
+  jitter is fixed — the shading normal is now properly rescaled for non-uniform scale rather
+  than transformed as though every axis scaled alike.
+
+### Changed
+
+- The `debug-*` and `splat-*` console commands were split out of two large shared wrapper
+  classes into one class per command, following the same `Layer → Command → Service` shape the
+  rest of the console commands already use.
+- Task IDs are now minted from a GitHub issue rather than by scanning the vault, so two sessions
+  working on different machines can never pick the same number.
+
+### Fixed
+
+- Starting a run from World Creator could leave the camera in third-person orbit instead of
+  first person, when the herd's tile hadn't streamed in yet at the exact moment the level
+  started; the camera now always starts first-person, and the toggle key is disabled during
+  play (still reachable from the console, and untouched in the Level Editor).
+- The Options screen's Resolution row always showed the monitor's native size after a restart
+  instead of whatever resolution was actually persisted and running.
+- The toolbelt and every carried buff (a lit torch, whisky, a fused stick of TNT) now clear on
+  every level load, instead of leaking into a freshly generated World Creator world.
+- A grass bale stopped visibly shrinking as it was eaten, a regression from the object update
+  split in the previous release.
+- Objects near the camera no longer drop out of view when the camera pitches steeply above the
+  horizon — frustum culling now judges the horizontal field of view alone.
+- A World Creator run could site a village or herd underwater if the water level was raised in
+  the same session, from writing the settings block after placement had already run instead of
+  before.
+
+### Audio & models
+
+- The agave got a full rebuild — tapered, photo-textured leaves that actually tilt in 3D; the
+  old model's leaves rendered flat from every angle because their UVs mapped base and tip to the
+  same height.
+- The horse's mane no longer hangs across its face and ears.
+- New burning-loop and extinguish sounds for a held torch, which can now also be lit or put out
+  while the camera is underwater; a normalised replacement for the open-barrel sound; corrected
+  default torch offsets that used to clip into nearby geometry.
+- The tornado's spin was retuned from a strobe-like ~28 rotations a second to a steady 3.
+
+### Known issues
+
+- Shoreline z-fighting on very large worlds is reduced but not gone — a proper fix needs a
+  logarithmic depth buffer.
+- A separate, hard-edged light/dark patching on fence planks (distinct from the shading-normal
+  bug fixed above) traces to the fence model's own baked normals and is not yet fixed.
+
 ## 0.5.7-dev – 2026-08-16 – 2026-09-01
 
 The release that learned to film itself. Worlds grow trees; a route drawn on the map flies a
