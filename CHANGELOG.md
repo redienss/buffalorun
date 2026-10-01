@@ -2,6 +2,119 @@
 
 All notable changes to BuffaloRun since the .NET 8 / MonoGame 3.8.4 port.
 
+## 0.5.9-dev – 2026-09-13 – 2026-10-01
+
+The dynamite release. A stick of TNT now blows a level apart properly: stones of shrapnel fly,
+bounce and trail smoke, a fireball burns into a cloud, and the blast hurts by distance rather
+than deleting everything inside a circle. It throws buffalo into the air and scatters the rest
+of the herd. To make that matter, **the player and every buffalo now have health**. The same
+push rebuilt the scenery around it: rocks, stone circles and tornadoes are now generated
+procedurally instead of being loaded from a handful of fixed models.
+
+### TNT and blasts
+
+- A blast throws 8–16 stones of procedurally built shrapnel on ballistic arcs. Each stone
+  tumbles about its own axis, trails a puff of smoke along its path, bounces off the ground
+  (skipping downhill on a slope), and then rests and shrinks away.
+- The fireball is made of switchable parts: a burst of fire puffs that burn into smoke, a
+  noise-shaded ball and a short flash of light, with the old sphere kept beside them.
+- Damage follows three Danger Zone rings measured to the nearest point of the player or each
+  buffalo, so a blast no longer deletes everything inside its radius. Scenery is still
+  destroyed outright, and a stick that goes off in your hand is still fatal.
+- A blast throws the buffalo it catches into the air, tumbling. Any that a blow would kill die
+  when they land and are counted as "caught in a blast" in the run summary.
+- A blast or a stone of shrapnel spooks the herd into running a set distance away from it.
+  They pick reachable ground by the route they would actually run, so a herd in a blown-open
+  stone circle retreats to the ring's far edge instead of out through the breach past the blast.
+  Then they settle and graze again, and a `herd-goto` order or route picks up where it left off.
+- Smoke puffs wear a procedural texture and are drawn in one call, however many there are.
+
+### Health
+
+- The player has health, shown on a bar bottom-left (the buffs moved up above it). A red edge
+  vignette flashes on every blow, and reaching zero ends the run with the cause as its heading.
+  Shrapnel hurts by its speed, and so does landing hard after a fall.
+- Each buffalo has health too. A wound shows on the animal, which limps and darkens, rather
+  than on a bar, and it heals only by eating at a grass bale. `H` toggles optional RTS-style
+  health bars during a run and remembers the choice.
+
+### Procedural scenery
+
+- **Rocks** are generated per level from its own seed: lumpy boulders with fracture cuts and a
+  flat underside. `world-add-rocks` and a new **Rocks** group in the World Creator lay them by
+  count, elevation band and size range. Level 001 was re-dressed with them.
+- **Stone circles** are built of generated standing stones spaced by their own measured size,
+  so a ring stays sealed and actually holds a herd. The World Creator's **Stone Circles** group
+  sets their size, variety and tallness. `world-redress-stones` converts an older world's FBX
+  stones once.
+- **Tornadoes** are a bent, flaring funnel of swirling dust with puffs, stones, twigs and
+  leaves whirled round it. They are the old cone's exact size, so their pull on the herd is
+  unchanged, and stay drawn while any part of them is on screen.
+- A tornado now flings the player, and throws each buffalo once, at a random upward angle
+  rather than lifting it straight up, so neither can be juggled in mid-air.
+
+### Gameplay
+
+- **Sleep in a wigwam**: a wigwam's container grid moves the day-night clock on by the hours
+  you pick.
+- A lit torch burns visibly with small fire puffs at its head, and in first person it is held
+  in the left hand, with its light on that side.
+- Containers that still hold loot shimmer with glints of light, so the ones worth opening can
+  be spotted from outside.
+- A thrown grass bale tumbles in flight like a stick of TNT, and still lands flat.
+- Pause now freezes everything: the player, the throw, a lit fuse, buff and torch timers and
+  the day-night clock, not only the level.
+
+### Camera
+
+- **Field of view** is adjustable in play: `-` and `=` narrow and widen it (held to repeat, in
+  proportional steps), down to 5° for a telephoto zoom. The `fov` and `camera-fov-zoom` console
+  commands set it from a script.
+- The orbit camera's target rides the ground or water under it, so a close zoom no longer hangs
+  in the air, and a stutter frame can no longer carry the zoom through zero into a runaway.
+- New scripting commands for the orbit camera: `camera-zoom`, `camera-tilt` and `camera-pan`,
+  each eased.
+
+### Herd and routing
+
+- A herd inside a closed stone circle stays inside it. No watchdog, route or bale takes an
+  animal to the far side of a wall.
+- The herd's grazing spot is kept off water, and a buffalo that ends up submerged can climb
+  back out.
+- Large streamed worlds no longer stall on a route search towards an unreachable destination,
+  and the herd no longer chases a bale it has no route to.
+- The pathfinding board is laid the same way on a level load as on a rebuild, so level 001's
+  four boulder dams are now TNT puzzles. Editing an obstacle in the level editor, or a blast
+  clearing a region, no longer leaves stray walled cells behind.
+
+### Fixed
+
+- Fence planks no longer Z-fight in first person. Instanced models are now drawn relative to
+  the camera, which had lost most of their depth precision kilometres out from the origin.
+- Water is no longer drawn over smoke, fireballs and shrapnel trails in front of it, and
+  distant water fades into the fog with the ground around it.
+- A thrown stick no longer stops dead in mid-air far from the origin, or shoots straight up
+  when it hits a rock square on.
+- Rocks no longer vanish from a raised first-person eye or a steep top-down view, and a steep
+  top-down view still skips most of the map when culling.
+- Three rock models got the bottom face they were missing, so a rock on a slope no longer shows
+  its hollow inside from downhill.
+- Clicking the wigwam's sleep button no longer throws the item in hand.
+- The mouse cursor is now drawn over the exit, game-over, level-complete and stats dialogs.
+- The F1 help flows into columns that fit the screen.
+
+### Changed
+
+- `Level.cs`, `Game.cs` and `WorldLayer.cs` were split into small single-purpose classes.
+  There is no change in behaviour, but they are much easier to work on.
+- `--record-gameplay` records live play at real-time speed through the offline renderer.
+- A World Creator showcase video was scripted and rendered at 4K 60 fps.
+
+### Known issues
+
+- Shoreline z-fighting on very large worlds is reduced but not gone; a proper fix needs a
+  logarithmic depth buffer.
+
 ## 0.5.8-dev – 2026-09-01 – 2026-09-13
 
 The release that stopped asking players to open a terminal. **World Creator** turns a
