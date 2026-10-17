@@ -2,6 +2,138 @@
 
 All notable changes to BuffaloRun since the .NET 8 / MonoGame 3.8.4 port.
 
+## 0.6.0-dev – 2026-10-01 – 2026-10-17
+
+The six-shooter release. A **Colt Single Action Army revolver** joins the tool belt, held in a
+rigged, tattooed hand and played two ways: a simple point-and-shoot Classic mode, or a
+Simulation mode where you cock the hammer, open the loading gate and turn the cylinder a
+chamber at a time. Beside it comes the **Buffalopedia**, an in-game encyclopedia that shows
+every model the game loads under studio lighting and explains how each item is used. The
+**sky** was rebuilt with sharper clouds, a glow towards the sun at dawn and dusk, and colours
+that follow the time of day. A new **FBX pipeline** now refuses any model that would draw
+wrong, so every model in the game was checked and fixed along the way.
+
+### The revolver
+
+- A nickel-plated Single Action Army with a fluted cylinder, primers and .45 Colt headstamps
+  on the rounds, and a red insert on the front sight. It is found as loot, in containers or
+  lying loose on the ground, together with boxes of cartridges.
+- **Classic mode**: the left mouse button fires, `R` reloads from the cartridges on your belt,
+  and the right mouse button raises the iron sights. The view narrows smoothly as the sights
+  come up, and the torch in your other hand is lifted out of the way.
+- **Simulation mode**, switched on the Options screen's Game tab: `F` cocks the hammer, the
+  middle mouse button opens the loading gate, `R` loads the chamber at the gate and `T` turns
+  the cylinder. The mouse wheel works the SAA's four hammer positions a click at a time, and a
+  flick of the wheel at half-cock spins the cylinder. There is no aiming dot: a shot leaves the
+  muzzle along the line of the sights, or goes to the middle of the screen from the hip.
+- A cylinder dial beside the tool belt shows the cylinder from behind, turning with the gun,
+  with fired cases shaded until they are ejected.
+- Sound for every part of it: the shot, the dry click on an empty chamber, the hammer, the
+  gate, a round going in, the cylinder's ratchet and spin, the ejected case dropping, and
+  bullet impacts and ricochets. The Options screen lets you pick the spin's click.
+- A shot shatters a bottle of whiskey into see-through glass shards.
+
+### The hands
+
+- In first person the tools are now held by a **rigged hand** with a forearm in a buckskin
+  sleeve and a beaded cuff. It is posed from the gun every frame: the thumb rides the hammer's
+  spur as it cocks and the index finger follows the trigger.
+- Bare tattooed hands or a thin fingerless leather glove, chosen by **Hands** on the Options
+  screen's Game tab.
+- The lit torch is held in a mirrored left hand, and a stick of dynamite in the right hand's
+  fist, drawn back by the wind-up and swung through on the throw.
+- The default field of view is now 60° instead of 75°.
+
+### The Buffalopedia
+
+- An encyclopedia of every model in the game, opened with `I` or from the main menu. Entries
+  are grouped Tools, Herding, Hazards, Containers, Buildings, Scenery and Animals, and each
+  says what the thing is and how it is used, with the keys shown as they are currently bound.
+- The model is drawn under its own studio light. Turn it with WASD, the arrows or a drag,
+  zoom with the wheel, press `F` for full screen, move the light round it, put it on a
+  turntable, and choose the background.
+- Browse with the `◀` / `▶` buttons, `Q` / `E` or PageUp / PageDown.
+- Moving parts can be played, paused and stepped a frame at a time: the revolver's hammer,
+  cylinder and gate, and the buffalo's run. The revolver can be shown in the hand in each of
+  its poses.
+- A developer inspector (off by default) shows what the game actually loaded: mesh counts,
+  materials and bounds, plus wireframe, normals and back-face overlays.
+
+### The sky
+
+- New procedural clouds at four times the old resolution, with no visible pixelation. Each of
+  the three layers is its own type (cumulus, puffs and cirrus), so they no longer repeat each
+  other's clouds.
+- Daytime clouds are softer and partly see-through, and their undersides take the sky's colour.
+- At sunrise and sunset the clouds are gold or pink depending on which side of the sky they
+  are on, purple-grey in their thick bodies, and silver-edged near the sun. A gradient glows
+  towards a low sun behind them, and the fog takes the same gradient, so the ground meets the
+  sky with no seam.
+- The sky is drawn on a geodesic dome of 395 triangles instead of the 2011 sphere of 7 584.
+
+### Gameplay
+
+- **A thrown grass bale lands as a pile of grass** once it comes to rest, and only a pile
+  feeds the herd. A bale on the ground is a pickup they ignore, so one bale can no longer lead
+  a herd across a map by being thrown, picked up and thrown again. You can wade through a pile.
+- **A lit torch sets a pile on fire**, whether you throw it, put it down in the pile or hold
+  it there. The pile burns away like a campfire, spooks the herd nearby and scorches whoever
+  stands in it.
+- Whiskey bottles shatter when shot, when caught in a TNT blast, or when thrown and hitting
+  anything.
+- The mouse wheel now belongs to the tool in your hand. Walk the belt with `Z` / `X`, or with
+  Alt + wheel. Standing a tool on the ground moved from the middle mouse button to `Q`.
+- A revolver or a box of cartridges on the ground is drawn larger than life and glints, so it
+  can be found and picked up.
+- The World Creator's Loot group has Revolvers and Cartridges rows, and a setting for how much
+  loot goes in containers and how much lies loose on the ground.
+- A small, repeated blow, such as standing in a grass fire, now shows a red vignette too.
+
+### Options and controls
+
+- The Options screen is split into tabs: Display, Graphics, Audio, Game and GUI.
+- **Control lock**: `F4` or Scroll Lock blocks all keys and mouse buttons except themselves.
+  Console scripts and offline renders take the lock automatically, so stray typing can't
+  reach a scripted run.
+- The F1 help lists the revolver's keys.
+
+### Models
+
+- A new content pipeline imports every model without losing triangles. The stock importer was
+  silently dropping small ones, which is what left holes in the revolver's cylinder and the
+  whiskey bottle. Models that would draw wrong (missing normals or textures, faces wound
+  against their normals) now fail the build.
+- Highlights only on the materials that ask for them, with the revolver's nickel and brass the
+  first to use them.
+- Fixed with it: the fence was inside out on every face, the cartridges' cases were lit from
+  the wrong side, two of the agave's leaves passed through each other, and the buffalo's run
+  flipped its legs into its body on a few frames.
+- The 2011 vulture model was removed.
+
+### Fixed
+
+- Small items lying on the ground no longer sink into the terrain where its mesh is simplified.
+- The held torch's flame no longer races ahead when you stop, bunches into clusters while
+  strafing, or comes away from the torch's head.
+- `camera-position` no longer puts out a lit torch.
+- A thrown grass bale tumbles about its middle instead of wobbling round its bottom face.
+- A setting changed with `set` at the console is no longer written to the settings file by
+  the next automatic save.
+
+### Changed
+
+- `scripts/record_gameplay.sh` records gameplay with GPU Screen Recorder and stops when the
+  game exits.
+- `scripts/sky_tour.sh` shoots the sky at fixed hours and angles into a single contact sheet,
+  for before-and-after comparisons.
+
+### Known issues
+
+- In first person the whiskey bottle and the grass bale are not yet held in a hand.
+- The horse's mane and tail don't render properly. A few models still have a face or two
+  wound against their normals.
+- Shoreline z-fighting on very large worlds is reduced but not gone.
+
 ## 0.5.9-dev – 2026-09-13 – 2026-10-01
 
 The dynamite release. A stick of TNT now blows a level apart properly: stones of shrapnel fly,
